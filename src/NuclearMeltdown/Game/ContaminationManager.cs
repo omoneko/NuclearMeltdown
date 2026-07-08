@@ -44,7 +44,7 @@ namespace NuclearMeltdown.Game
             RefreshZoneTexture(zone);
         }
 
-        private static void RefreshZoneTexture(ContaminationZone zone)
+        public static void RefreshZoneTexture(ContaminationZone zone)
         {
             int cellRadius = (int)(zone.Radius / PollutionGrid.CellSize) + 1;
             int cx = PollutionGrid.WorldToCell(zone.CenterX);
