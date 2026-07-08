@@ -29,8 +29,7 @@ namespace NuclearMeltdown.Game.Patches
                 if (!NuclearDetector.IsNuclearPlant(buildingID)) return;
 
                 Vector3 pos = data.m_position;
-                // Task 8 で MeltdownEffect.Trigger(pos) に置換
-                ModConfig.Log("Nuclear plant collapsed at " + pos + " (effect stub)");
+                MeltdownEffect.Trigger(pos);
             }
             catch (System.Exception e)
             {
