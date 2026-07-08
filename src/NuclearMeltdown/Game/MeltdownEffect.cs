@@ -54,8 +54,11 @@ namespace NuclearMeltdown.Game
 
             // クレーター(地形変形)
             DisasterHelpers.MakeCrater(pos2d, craterRadius, craterDepth, raiseEdges: true);
-            // 範囲内の建物・道路・樹木・小物を破壊(preRadius=0 の一括処理)
-            DisasterHelpers.DestroyStuff(seed, null, position, totalRadius, 0f, removeRadius,
+            // 範囲内の建物・道路・樹木・小物を破壊。
+            // preRadius は「衝撃波が到達した外周半径」で、DestroyBuildings 内の門番
+            // (num7 < preRadius) と走査範囲を決める。ここを外周(totalRadius)にしないと
+            // 何も破壊されない。removeRadius 内(中心=原発)は demolish=true で土台ごと撤去される。
+            DisasterHelpers.DestroyStuff(seed, null, position, totalRadius, totalRadius, removeRadius,
                 destMin, destMax, burnMin, burnMax);
 
             // メテオ視覚効果/効果音は Natural Disasters DLC がある場合のみ流用(無ければ破壊のみ)
