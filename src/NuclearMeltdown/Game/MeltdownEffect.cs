@@ -9,15 +9,31 @@ namespace NuclearMeltdown.Game
     {
         public static void Trigger(Vector3 position)
         {
-            PlayExplosion(position);
+            // ゲームの決定論RNG(セーブ再現性を保つ)で 0-99 を抽選し、結果を確率テーブルで決定
+            int roll = (int)SimulationManager.instance.m_randomizer.Int32(100u);
+            MeltdownOutcome outcome = MeltdownOutcomeTable.FromRoll(roll);
 
-            long startTicks = SimulationManager.instance.m_currentGameTime.Ticks;
-            var zone = new ContaminationZone(position.x, position.z, ModConfig.DefaultRadiusMeters, startTicks);
-            ContaminationManager.AddZone(zone);
-            ModConfig.Log("Meltdown triggered at " + position + " radius " + ModConfig.DefaultRadiusMeters);
+            // 汚染を先に確定（エフェクト取得失敗で汚染登録を失わないため）
+            if (outcome.Contaminate)
+            {
+                long startTicks = SimulationManager.instance.m_currentGameTime.Ticks;
+                float radius = ModConfig.DefaultRadiusMeters * outcome.ContaminationScale;
+                ContaminationManager.AddZone(new ContaminationZone(position.x, position.z, radius, startTicks));
+            }
+
+            // 爆発は独立して try/catch（視覚効果の失敗が汚染に影響しないように）
+            if (outcome.Explode)
+            {
+                try { PlayExplosion(position, outcome.ExplosionScale); }
+                catch (System.Exception e) { ModConfig.LogError("explosion error: " + e); }
+            }
+
+            ModConfig.Log("Meltdown roll=" + roll
+                + " explode=" + outcome.Explode + "(x" + outcome.ExplosionScale + ")"
+                + " contaminate=" + outcome.Contaminate + "(x" + outcome.ContaminationScale + ")");
         }
 
-        private static void PlayExplosion(Vector3 position)
+        private static void PlayExplosion(Vector3 position, float scale)
         {
             EffectInfo effect = ResolveExplosionEffect();
             if (effect == null)
@@ -27,8 +43,9 @@ namespace NuclearMeltdown.Game
             }
             var spawnArea = new EffectInfo.SpawnArea(position, Vector3.up, 0f);
             var instanceID = default(InstanceID);
+            // magnitude に Scale を渡して爆発規模を反映
             Singleton<EffectManager>.instance.DispatchEffect(
-                effect, instanceID, spawnArea, Vector3.zero, 0f, 1f,
+                effect, instanceID, spawnArea, Vector3.zero, 0f, scale,
                 Singleton<VehicleManager>.instance.m_audioGroup);
         }
 
