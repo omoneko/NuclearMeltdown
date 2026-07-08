@@ -33,20 +33,44 @@ namespace NuclearMeltdown.Game
                 + " contaminate=" + outcome.Contaminate + "(x" + outcome.ContaminationScale + ")");
         }
 
+        /// <summary>
+        /// 爆発 = クレーター形成 + 範囲内の建物/道路/樹木/小物の破壊 + (DLC時)メテオ視覚効果。
+        /// クレーター/破壊はゲームの災害ヘルパ(DisasterHelpers, 基本ゲーム側=DLC非依存)を流用し、
+        /// 半径類を Scale 倍する。地形破壊を避けるためクレーターには上限を設ける。
+        /// </summary>
         private static void PlayExplosion(Vector3 position, float scale)
         {
+            var pos2d = new Vector2(position.x, position.z);
+            int seed = (int)SimulationManager.instance.m_randomizer.Int32(1000000u);
+
+            float craterRadius = Mathf.Min(ModConfig.CraterRadiusBase * scale, ModConfig.CraterRadiusMax);
+            float craterDepth = Mathf.Min(ModConfig.CraterDepthBase * scale, ModConfig.CraterDepthMax);
+            float removeRadius = ModConfig.RemoveRadiusBase * scale;      // 内側=全破壊
+            float destMin = ModConfig.DestructionRadiusMinBase * scale;
+            float destMax = ModConfig.DestructionRadiusMaxBase * scale;
+            float burnMin = destMax;
+            float burnMax = ModConfig.BurnRadiusMaxBase * scale;
+            float totalRadius = burnMax;
+
+            // クレーター(地形変形)
+            DisasterHelpers.MakeCrater(pos2d, craterRadius, craterDepth, raiseEdges: true);
+            // 範囲内の建物・道路・樹木・小物を破壊(preRadius=0 の一括処理)
+            DisasterHelpers.DestroyStuff(seed, null, position, totalRadius, 0f, removeRadius,
+                destMin, destMax, burnMin, burnMax);
+
+            // メテオ視覚効果/効果音は Natural Disasters DLC がある場合のみ流用(無ければ破壊のみ)
             EffectInfo effect = ResolveExplosionEffect();
-            if (effect == null)
+            if (effect != null)
             {
-                ModConfig.Log("explosion effect unavailable (Natural Disasters DLC not present?) — skipping visual");
-                return;
+                var spawnArea = new EffectInfo.SpawnArea(position, Vector3.up, 0f);
+                Singleton<EffectManager>.instance.DispatchEffect(
+                    effect, default(InstanceID), spawnArea, Vector3.zero, 0f, scale,
+                    Singleton<VehicleManager>.instance.m_audioGroup);
             }
-            var spawnArea = new EffectInfo.SpawnArea(position, Vector3.up, 0f);
-            var instanceID = default(InstanceID);
-            // magnitude に Scale を渡して爆発規模を反映
-            Singleton<EffectManager>.instance.DispatchEffect(
-                effect, instanceID, spawnArea, Vector3.zero, 0f, scale,
-                Singleton<VehicleManager>.instance.m_audioGroup);
+            else
+            {
+                ModConfig.Log("meteor visual effect unavailable (no DLC) — crater/destruction still applied");
+            }
         }
 
         private static EffectInfo ResolveExplosionEffect()
