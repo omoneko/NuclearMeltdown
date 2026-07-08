@@ -34,7 +34,7 @@ namespace NuclearMeltdown.Game
             var arr = NaturalResourceManager.instance.m_naturalResources;
             if (index < 0 || index >= arr.Length) return;
             int v = arr[index].m_pollution - step;
-            arr[index].m_pollution = (byte)(v < 0 ? 0 : v);
+            arr[index].m_pollution = (byte)(v < 0 ? 0 : (v > 255 ? 255 : v));
         }
 
         /// <summary>汚染テクスチャを更新（cellX/cellZ範囲）。</summary>
