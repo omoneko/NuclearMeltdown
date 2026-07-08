@@ -12,6 +12,7 @@ namespace NuclearMeltdown.Game.Simulation
     public class MeltdownThreadingExtension : ThreadingExtensionBase
     {
         private int _tickCounter;
+        private int _deconCounter;              // 除染の減算頻度を間引くためのカウンタ
         private const int ProcessInterval = 16; // 16tickに1回処理（負荷軽減）
 
         public override void OnAfterSimulationTick()
@@ -25,6 +26,14 @@ namespace NuclearMeltdown.Game.Simulation
                 if (zones.Count == 0) return;
 
                 long nowTicks = SimulationManager.instance.m_currentGameTime.Ticks;
+
+                // 除染の減算はこの処理サイクルで許可されるか（Interval サイクルに1回だけ = 100倍遅く）
+                bool reduceThisCycle = false;
+                if (++_deconCounter >= ModConfig.DecontaminationInterval)
+                {
+                    reduceThisCycle = true;
+                    _deconCounter = 0;
+                }
 
                 // 後ろから走査してインデックス除去に対応
                 for (int i = zones.Count - 1; i >= 0; i--)
@@ -41,7 +50,8 @@ namespace NuclearMeltdown.Game.Simulation
 
                     if (IsDecontaminationActive(zone))
                     {
-                        DecontaminateZone(zone, i);
+                        // 除染中は減算許可サイクルのみ減らす。それ以外は保持(再アサートも減算もしない)
+                        if (reduceThisCycle) DecontaminateZone(zone, i);
                         continue;
                     }
 
@@ -97,7 +107,7 @@ namespace NuclearMeltdown.Game.Simulation
             bool anyRemaining = false;
             for (int i = 0; i < doses.Count; i++)
             {
-                PollutionField.ReducePollution(doses[i].Index, 8); // 徐々に除去
+                PollutionField.ReducePollution(doses[i].Index, ModConfig.DecontaminationStep); // 徐々に除去
                 if (PollutionField.GetPollution(doses[i].Index) > 0) anyRemaining = true;
             }
             // テクスチャ更新

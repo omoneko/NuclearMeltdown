@@ -9,6 +9,10 @@ namespace NuclearMeltdown.Game
         public const float DefaultRadiusMeters = 700f;
         public const int ExpiryYears = 50;
         public const string DecontaminationNameKeyword = "Water Treatment";
+        // 除染: DecontaminationInterval 処理サイクルに1回だけ、各セルを DecontaminationStep 減らす。
+        // (処理は16tickごと。Interval を大きくするほど除染は遅くなる)
+        public const int DecontaminationStep = 8;
+        public const int DecontaminationInterval = 100;
         public const string NuclearNameKeyword = "Nuclear";
         public const byte MaxPollution = 255;
         public const string LogPrefix = "[NuclearMeltdown] ";
