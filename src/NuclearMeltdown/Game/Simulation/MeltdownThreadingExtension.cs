@@ -59,14 +59,19 @@ namespace NuclearMeltdown.Game.Simulation
         {
             var bm = BuildingManager.instance;
             ushort[] grid = bm.m_buildingGrid;
-            // ゾーン中心のビルディンググリッドセル(±1)を走査
+            // ゾーン半径をカバーするビルディンググリッドセル範囲を走査
             int gx = Mathf.Clamp((int)(zone.CenterX / 64f + 135f), 0, 269);
             int gz = Mathf.Clamp((int)(zone.CenterZ / 64f + 135f), 0, 269);
-            for (int dz = -1; dz <= 1; dz++)
+            int cellRadius = (int)(zone.Radius / 64f) + 1;
+            for (int dz = -cellRadius; dz <= cellRadius; dz++)
             {
-                for (int dx = -1; dx <= 1; dx++)
+                int cz = gz + dz;
+                if (cz < 0 || cz > 269) continue;
+                for (int dx = -cellRadius; dx <= cellRadius; dx++)
                 {
-                    int cell = (gz + dz) * 270 + (gx + dx);
+                    int cx = gx + dx;
+                    if (cx < 0 || cx > 269) continue;
+                    int cell = cz * 270 + cx;
                     if (cell < 0 || cell >= grid.Length) continue;
                     ushort id = grid[cell];
                     int guard = 0;
