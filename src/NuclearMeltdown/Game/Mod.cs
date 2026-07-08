@@ -10,9 +10,15 @@ namespace NuclearMeltdown.Game
 
         public void OnEnabled()
         {
-            HarmonyHelper.DoOnHarmonyReady(() => ModConfig.Log("enabled (patches applied in Task 6)"));
+            HarmonyHelper.DoOnHarmonyReady(() => Patcher.PatchAll());
         }
 
-        public void OnDisabled() { }
+        public void OnDisabled()
+        {
+            if (HarmonyHelper.IsHarmonyInstalled)
+            {
+                Patcher.UnpatchAll();
+            }
+        }
     }
 }
