@@ -8,12 +8,13 @@ namespace NuclearMeltdown.Game
         public const string HarmonyId = "com.omone.nuclearmeltdown";
         public const float DefaultRadiusMeters = 700f;
         public const int ExpiryYears = 50;
-        public const string DecontaminationNameKeyword = "Water Treatment";
-        // 除染: DecontaminationInterval 処理サイクルに1回だけ、各セルを DecontaminationStep 減らす。
-        // (処理は16tickごと。Interval を大きくするほど除染は遅くなる)
-        public const int DecontaminationStep = 8;
-        public const int DecontaminationInterval = 100;
-        public const string NuclearNameKeyword = "Nuclear";
+        // 除染は専用の「Decontamination facility」建物のみ（汚水処理場では除染されない）。
+        // 名称に下記キーワードを含む稼働中の建物がゾーン付近にあると、各セルの汚染を
+        // ゲーム内1か月あたり DecontaminationMonthlyFraction 相対除去する（核ミサイルMODと同一仕様）。
+        public const string DecontaminationNameKeyword = "Decontamination";
+        public const float DecontaminationMonthlyFraction = 0.05f; // 1か月で5%除去（相対）
+        public const byte DecontaminationMinIntensity = 5;          // これ以下のセルは0にする
+        // 原発の名称判定キーワードは NuclearMeltdown.Core.NuclearNameMatcher に集約（テスト可能・"NPP"等に対応）。
         public const byte MaxPollution = 255;
         public const string LogPrefix = "[NuclearMeltdown] ";
 

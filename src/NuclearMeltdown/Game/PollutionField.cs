@@ -22,6 +22,14 @@ namespace NuclearMeltdown.Game
             }
         }
 
+        /// <summary>セルの汚染を dose.Intensity に上書き設定する（除染で濃度を下げる用）。</summary>
+        public static void SetDose(CellDose dose)
+        {
+            var arr = NaturalResourceManager.instance.m_naturalResources;
+            if (dose.Index < 0 || dose.Index >= arr.Length) return;
+            arr[dose.Index].m_pollution = dose.Intensity;
+        }
+
         public static void ClearCell(int index)
         {
             var arr = NaturalResourceManager.instance.m_naturalResources;
