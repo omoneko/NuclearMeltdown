@@ -45,27 +45,30 @@ namespace NuclearMeltdown.Game
             return (byte)v;
         }
 
-        /// <summary>汚染を維持する（自然減衰で下がったセルを zone.Intensity まで引き上げる）。</summary>
+        /// <summary>汚染を維持する（自然減衰で下がったセルを zone.Intensity まで引き上げる）。変化があった時だけ再描画。</summary>
         public static void ReassertZone(ContaminationZone zone)
         {
             var doses = PollutionGrid.CellsInRadius(zone.CenterX, zone.CenterZ, zone.Radius, ToByteIntensity(zone.Intensity));
-            for (int i = 0; i < doses.Count; i++) PollutionField.ApplyDose(doses[i]);
-            RefreshZoneTexture(zone);
+            bool changed = false;
+            for (int i = 0; i < doses.Count; i++) changed |= PollutionField.ApplyDose(doses[i]);
+            if (changed) RefreshZoneTexture(zone); // 定常状態(無変化)では再描画しない＝オーバーレイの点滅を防ぐ
         }
 
-        /// <summary>汚染を上書き設定する（除染で下げた濃度を反映）。</summary>
+        /// <summary>汚染を上書き設定する（除染で下げた濃度を反映）。変化があった時だけ再描画。</summary>
         public static void SetZone(ContaminationZone zone)
         {
             var doses = PollutionGrid.CellsInRadius(zone.CenterX, zone.CenterZ, zone.Radius, ToByteIntensity(zone.Intensity));
-            for (int i = 0; i < doses.Count; i++) PollutionField.SetDose(doses[i]);
-            RefreshZoneTexture(zone);
+            bool changed = false;
+            for (int i = 0; i < doses.Count; i++) changed |= PollutionField.SetDose(doses[i]);
+            if (changed) RefreshZoneTexture(zone);
         }
 
         public static void ClearZone(ContaminationZone zone)
         {
             var doses = PollutionGrid.CellsInRadius(zone.CenterX, zone.CenterZ, zone.Radius, ModConfig.MaxPollution);
-            for (int i = 0; i < doses.Count; i++) PollutionField.ClearCell(doses[i].Index);
-            RefreshZoneTexture(zone);
+            bool changed = false;
+            for (int i = 0; i < doses.Count; i++) changed |= PollutionField.ClearCell(doses[i].Index);
+            if (changed) RefreshZoneTexture(zone);
         }
 
         public static void RefreshZoneTexture(ContaminationZone zone)

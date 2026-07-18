@@ -12,29 +12,41 @@ namespace NuclearMeltdown.Game
             return arr[index].m_pollution;
         }
 
-        public static void ApplyDose(CellDose dose)
+        public static bool ApplyDose(CellDose dose)
         {
             var arr = NaturalResourceManager.instance.m_naturalResources;
-            if (dose.Index < 0 || dose.Index >= arr.Length) return;
+            if (dose.Index < 0 || dose.Index >= arr.Length) return false;
             if (arr[dose.Index].m_pollution < dose.Intensity)
             {
                 arr[dose.Index].m_pollution = dose.Intensity;
+                return true;
             }
+            return false;
         }
 
-        /// <summary>セルの汚染を dose.Intensity に上書き設定する（除染で濃度を下げる用）。</summary>
-        public static void SetDose(CellDose dose)
+        /// <summary>セルの汚染を dose.Intensity に上書き設定する（除染で濃度を下げる用）。実際に書き換えたら true。</summary>
+        public static bool SetDose(CellDose dose)
         {
             var arr = NaturalResourceManager.instance.m_naturalResources;
-            if (dose.Index < 0 || dose.Index >= arr.Length) return;
-            arr[dose.Index].m_pollution = dose.Intensity;
+            if (dose.Index < 0 || dose.Index >= arr.Length) return false;
+            if (arr[dose.Index].m_pollution != dose.Intensity)
+            {
+                arr[dose.Index].m_pollution = dose.Intensity;
+                return true;
+            }
+            return false;
         }
 
-        public static void ClearCell(int index)
+        public static bool ClearCell(int index)
         {
             var arr = NaturalResourceManager.instance.m_naturalResources;
-            if (index < 0 || index >= arr.Length) return;
-            arr[index].m_pollution = 0;
+            if (index < 0 || index >= arr.Length) return false;
+            if (arr[index].m_pollution != 0)
+            {
+                arr[index].m_pollution = 0;
+                return true;
+            }
+            return false;
         }
 
         public static void ReducePollution(int index, int step)
