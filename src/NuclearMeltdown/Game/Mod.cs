@@ -19,9 +19,10 @@ namespace NuclearMeltdown.Game
                     i => ModSettings.ScaleModeSetting.value = i);
                 g.AddButton(
                     "Random: the original probability table (5% huge / 15% large / 45% normal / 30% fallout only / 5% collapse only).  " +
-                    "Based on plant output: scale is directly proportional to output (output / 640), so a vanilla nuclear " +
-                    "plant = 1.0, a 3200 MW reactor = 5.0, and twice the output means twice the blast radius. " +
-                    "There is no upper limit - a monstrous reactor really can wipe out the map.  " +
+                    "Based on plant output: scale is directly proportional to the plant's power output, with a vanilla " +
+                    "nuclear plant (640 MW) = 1.0, a 1280 MW reactor = 2.0 and a 3200 MW reactor = 5.0 - twice the " +
+                    "output means twice the blast radius. There is no upper limit: a monstrous reactor really can wipe " +
+                    "out the map.  " +
                     "Fixed scale: always use the multiplier below.",
                     () => { });
                 g.AddSlider("Fixed scale x10 (10 = 1.0)", ModSettings.FixedScaleMin, ModSettings.FixedScaleMax, 1,

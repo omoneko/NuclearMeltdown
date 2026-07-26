@@ -51,7 +51,10 @@ namespace NuclearMeltdown.Game
                 catch (System.Exception e) { ModConfig.LogError("explosion error: " + e); }
             }
 
-            ModConfig.Log("Meltdown mode=" + mode + " output=" + electricityProduction + " roll=" + roll
+            // output は内部単位。UI表示の MW は概ね output/62.5 なので、確認しやすいよう併記する。
+            ModConfig.Log("Meltdown mode=" + mode
+                + " output=" + electricityProduction + "(~" + (electricityProduction / 62.5f).ToString("0") + "MW)"
+                + " roll=" + roll
                 + " explode=" + outcome.Explode + "(x" + outcome.ExplosionScale + ")"
                 + " contaminate=" + outcome.Contaminate + "(x" + outcome.ContaminationScale + ")");
         }
