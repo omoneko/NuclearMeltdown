@@ -29,10 +29,13 @@ namespace NuclearMeltdown.Game
         public const float BurnRadiusMaxBase = 200f;       // 延焼の外縁
 
         // 「原発の出力に応じた災害規模」モードの設定。Scale = cbrt(出力 / ReferenceOutput)。
-        // バニラ原発(640)を 1.0 とし、極端な出力のアセットでも暴走しないよう上下限でクランプする。
-        public const int ReferenceOutput = 640;            // バニラ原子力発電所の m_electricityProduction
+        // 基準は Workshop の大型原発アセット相当(40000)。バニラ原発(640)は小規模(≒0.25)、
+        // 出力が桁違いに大きいアセットでもはっきり差が出るよう上限を大きめに取る。
+        public const int ReferenceOutput = 40000;          // Scale 1.0 の基準出力（大型原発アセット相当）
         public const float OutputScaleMin = 0.25f;         // 規模の下限
-        public const float OutputScaleMax = 5f;            // 規模の上限
+        public const float OutputScaleMax = 30f;           // 規模の上限（超大出力アセットでも差が出るよう緩和）
+        // 汚染だけは半径が巨大化しやすい(基準700m×Scale)ため、別途メートル単位で上限を設ける。
+        public const float ContaminationRadiusMax = 5000f;
 
         public static void Log(string msg)
         {

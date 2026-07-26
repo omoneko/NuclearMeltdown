@@ -19,8 +19,9 @@ namespace NuclearMeltdown.Game
                     i => ModSettings.ScaleModeSetting.value = i);
                 g.AddButton(
                     "Random: the original probability table (5% huge / 15% large / 45% normal / 30% fallout only / 5% collapse only).  " +
-                    "Based on plant output: scale = cube root of (plant output / 640), so a vanilla nuclear plant = 1.0 and bigger " +
-                    "Workshop reactors cause proportionally bigger disasters (clamped 0.25-5.0).  " +
+                    "Based on plant output: scale = cube root of (plant output / 40000), so a large Workshop reactor = 1.0, " +
+                    "a vanilla nuclear plant is much smaller, and huge reactors cause far bigger disasters (clamped 0.25-30). " +
+                    "Fallout radius is additionally capped so it cannot swallow the whole map.  " +
                     "Fixed scale: always use the multiplier below.",
                     () => { });
                 g.AddSlider("Fixed scale x10 (10 = 1.0)", ModSettings.FixedScaleMin, ModSettings.FixedScaleMax, 1,

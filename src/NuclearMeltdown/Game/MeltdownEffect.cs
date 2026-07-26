@@ -39,7 +39,9 @@ namespace NuclearMeltdown.Game
             if (outcome.Contaminate)
             {
                 long startTicks = SimulationManager.instance.m_currentGameTime.Ticks;
-                float radius = ModConfig.DefaultRadiusMeters * outcome.ContaminationScale;
+                // 汚染半径は Scale が大きいとマップを覆うため、メートル単位の上限でクランプする。
+                float radius = Mathf.Min(ModConfig.DefaultRadiusMeters * outcome.ContaminationScale,
+                    ModConfig.ContaminationRadiusMax);
                 ContaminationManager.AddZone(new ContaminationZone(position.x, position.z, radius, startTicks));
             }
 
