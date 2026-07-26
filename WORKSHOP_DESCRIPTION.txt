@@ -1,43 +1,49 @@
-=== Steam Workshop 説明文（英語・そのまま貼り付け可） ===
+=== Steam Workshop 説明文（BBCode・そのまま貼り付け可） ===
 
-Nuclear Meltdown
+[h1]Nuclear Meltdown[/h1]
+When a nuclear power plant is destroyed by fire or a disaster, it doesn't just quietly collapse — it can trigger a catastrophic [b]meltdown[/b]: a huge explosion that craters the ground and flattens the surrounding district, followed by long-lasting radioactive ground contamination.
 
-When a nuclear power plant is destroyed by fire or a disaster, it doesn't just quietly collapse - it can trigger a catastrophic meltdown: a huge explosion that craters the ground and flattens the surrounding district, followed by long-lasting radioactive ground contamination.
-
-What happens (rolled randomly each time a plant is destroyed):
-- 5%  - Scale 10.0 meltdown: enormous blast + crater + fallout over a huge area
-- 15% - Scale 5.5 meltdown
-- 45% - Scale 1.0 meltdown (base)
-- 30% - no blast, contamination only
-- 5%  - collapse only (no blast, no contamination)
-
+[h2]What happens[/h2]
+Rolled randomly each time a plant is destroyed:
+[list]
+[*][b]5%[/b] — Scale 10.0 meltdown: enormous blast + crater + fallout over a huge area
+[*][b]15%[/b] — Scale 5.5 meltdown
+[*][b]45%[/b] — Scale 1.0 meltdown (base)
+[*][b]30%[/b] — no blast, contamination only
+[*][b]5%[/b] — collapse only (no blast, no contamination)
+[/list]
 The blast forms a crater and destroys nearby buildings, roads and trees (scaled by severity). Contamination reuses the game's ground-pollution system and is kept active by the mod so it does not fade away on its own.
 
-Cleaning it up:
-- Contamination clears after 50 in-game years, OR
-- Run a Water Treatment Plant inside the contaminated area to gradually decontaminate it.
+[h2]Cleaning it up[/h2]
+[list]
+[*]Contamination clears on its own after [b]50 in-game years[/b], OR
+[*]Build a [b]Decontamination facility[/b] (a building asset whose name contains "Decontamination") near the contaminated area — it gradually cleans fallout at about [b]5% per in-game month[/b].
+[/list]
+[b]Note:[/b] a Water Treatment Plant does NOT decontaminate — you need a dedicated Decontamination facility.
 
-Only plants destroyed by FIRE or DISASTER trigger a meltdown - bulldozing a plant yourself does nothing.
+[h2]Good to know[/h2]
+[list]
+[*]Only plants destroyed by [b]fire or disaster[/b] trigger a meltdown — bulldozing a plant yourself does nothing.
+[*]Explosions destroy surrounding buildings and can chain-react between nuclear plants placed close together.
+[*]Save / load is supported — contamination persists across saves.
+[/list]
 
-REQUIRED:
-- Harmony (Mod Dependency) - you must subscribe to it, or this mod will not work.
-
-OPTIONAL:
-- Natural Disasters DLC adds the meteor explosion visual/audio. The mod works fully without it (crater, destruction and contamination still happen).
-
-Warnings:
-- Explosions destroy surrounding buildings and can chain-react between nuclear plants placed close together.
-- Save/load is supported - contamination persists across saves.
+[h2]Requirements[/h2]
+[list]
+[*][b]Required[/b]: Harmony (Mod Dependency) — you must subscribe to it, or this mod will not work.
+[*][b]Optional[/b]: Natural Disasters DLC adds the meteor explosion visual/audio. The mod works fully without it (crater, destruction and contamination still happen).
+[/list]
 
 Feedback and bug reports are welcome!
 
 
-=== 補足（日本語・任意で追記） ===
-原子力発電所が火災や災害で破壊されると、確率でメルトダウン（大爆発＋クレーター＋周囲の建物破壊＋放射能汚染）が発生します。汚染はゲーム内50年経過、または下水処理施設の稼働で消えます。手動での解体では何も起きません。
-※Harmony (Mod Dependency) が必須。Natural Disasters DLC があると爆発の視覚効果が付きます（無くても動作）。
+=== 補足（日本語・任意で説明文の末尾に追記可） ===
+
+[h2]日本語[/h2]
+原子力発電所が火災や災害で破壊されると、確率でメルトダウン（大爆発＋クレーター＋周囲の建物破壊＋放射能汚染）が発生します。汚染はゲーム内50年経過、または「[b]Decontamination facility[/b]」（名前に "Decontamination" を含む建物）を汚染地域の近くに建てると約5%/ゲーム内月で軽減します（※下水処理場では除染されません）。手動での解体では何も起きません。Harmony (Mod Dependency) が必須。Natural Disasters DLC があると爆発の視覚/音効果が付きます（無くても動作）。
 
 
-=== Workshop ページ設定メモ ===
+=== Workshop ページ設定メモ（※説明欄には貼らない・作業用） ===
 - Required Items に「Harmony (Mod Dependency)」を必ず追加
 - ギャラリー画像に Pictures\1〜5.png を順番にアップロード
 - タグ: 適切なもの（例: Mod）

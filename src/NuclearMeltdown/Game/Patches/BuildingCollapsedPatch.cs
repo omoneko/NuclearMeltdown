@@ -28,7 +28,9 @@ namespace NuclearMeltdown.Game.Patches
                 if ((buildingData.m_flags & Building.Flags.Demolishing) != Building.Flags.None) return;
                 if (!NuclearDetector.IsNuclearPlant(buildingID)) return;
 
-                MeltdownEffect.Trigger(buildingData.m_position);
+                // 「出力に応じた規模」モード用に、崩壊した原発の発電出力を渡す。
+                int output = NuclearDetector.GetElectricityProduction(buildingID);
+                MeltdownEffect.Trigger(buildingData.m_position, output);
             }
             catch (Exception e)
             {

@@ -7,11 +7,33 @@ namespace NuclearMeltdown.Game
     /// <summary>崩壊時の爆発エフェクトと汚染ゾーン発生。</summary>
     public static class MeltdownEffect
     {
-        public static void Trigger(Vector3 position)
+        /// <summary>
+        /// 原発崩壊時の効果を発生させる。electricityProduction は「出力に応じた規模」モード用の
+        /// 発電出力（0=不明なら基準値扱い）。規模の決め方と爆発/汚染の有無はオプションに従う。
+        /// </summary>
+        public static void Trigger(Vector3 position, int electricityProduction)
         {
-            // ゲームの決定論RNG(セーブ再現性を保つ)で 0-99 を抽選し、結果を確率テーブルで決定
+            // ゲームの決定論RNG(セーブ再現性を保つ)で 0-99 を抽選（Random モード用）
             int roll = (int)SimulationManager.instance.m_randomizer.Int32(100u);
-            MeltdownOutcome outcome = MeltdownOutcomeTable.FromRoll(roll);
+
+            MeltdownScaleMode mode = ModSettings.ScaleMode;
+            float scale;
+            switch (mode)
+            {
+                case MeltdownScaleMode.ByOutput:
+                    scale = OutputScale.FromOutput(electricityProduction, ModConfig.ReferenceOutput,
+                        ModConfig.OutputScaleMin, ModConfig.OutputScaleMax);
+                    break;
+                case MeltdownScaleMode.Fixed:
+                    scale = ModSettings.FixedScale;
+                    break;
+                default:
+                    scale = 0f; // Random は確率テーブル側で決まる
+                    break;
+            }
+
+            MeltdownOutcome outcome = MeltdownOutcomeSelector.Select(
+                mode, roll, scale, ModSettings.ExplosionEnabled, ModSettings.ContaminationEnabled);
 
             // 汚染を先に確定（エフェクト取得失敗で汚染登録を失わないため）
             if (outcome.Contaminate)
@@ -28,7 +50,7 @@ namespace NuclearMeltdown.Game
                 catch (System.Exception e) { ModConfig.LogError("explosion error: " + e); }
             }
 
-            ModConfig.Log("Meltdown roll=" + roll
+            ModConfig.Log("Meltdown mode=" + mode + " output=" + electricityProduction + " roll=" + roll
                 + " explode=" + outcome.Explode + "(x" + outcome.ExplosionScale + ")"
                 + " contaminate=" + outcome.Contaminate + "(x" + outcome.ContaminationScale + ")");
         }
