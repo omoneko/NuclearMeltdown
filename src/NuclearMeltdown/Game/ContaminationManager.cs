@@ -73,7 +73,11 @@ namespace NuclearMeltdown.Game
 
         public static void RefreshZoneTexture(ContaminationZone zone)
         {
-            int cellRadius = (int)(zone.Radius / PollutionGrid.CellSize) + 1;
+            // 巨大半径(超高出力の原発)でも int オーバーフローしないよう long で計算して丸める。
+            // 下の Clamp でグリッド内に収まるため、Resolution を超える値は意味がない。
+            long rawCellRadius = (long)(zone.Radius / PollutionGrid.CellSize) + 1;
+            int cellRadius = rawCellRadius > PollutionGrid.Resolution
+                ? PollutionGrid.Resolution : (int)rawCellRadius;
             int cx = PollutionGrid.WorldToCell(zone.CenterX);
             int cz = PollutionGrid.WorldToCell(zone.CenterZ);
             int minX = Clamp(cx - cellRadius), maxX = Clamp(cx + cellRadius);

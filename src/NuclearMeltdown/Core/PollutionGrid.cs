@@ -33,7 +33,10 @@ namespace NuclearMeltdown.Core
             var result = new List<CellDose>();
             if (radiusMeters <= 0f) return result;
 
-            int cellRadius = (int)(radiusMeters / CellSize) + 1;
+            // セル半径はグリッド全体(Resolution)を超えて走査しても無意味なので上限を掛ける。
+            // これが無いと巨大半径(超高出力の原発など)で数千万回の空ループになりゲームが固まる。
+            long rawCellRadius = (long)(radiusMeters / CellSize) + 1;
+            int cellRadius = rawCellRadius > Resolution ? Resolution : (int)rawCellRadius;
             int centerCellX = WorldToCell(centerX);
             int centerCellZ = WorldToCell(centerZ);
 

@@ -53,4 +53,16 @@ public class PollutionGridTests
         var seen = new HashSet<int>();
         foreach (var c in cells) Assert.True(seen.Add(c.Index), "duplicate index " + c.Index);
     }
+
+    [Fact]
+    public void CellsInRadius_huge_radius_is_bounded_and_fast()
+    {
+        // 超高出力の原発で半径が桁違いになっても、走査はグリッド(512x512)内に収まり即座に返る
+        // （上限が無いと数千万回の空ループでゲームが固まる）。
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var cells = PollutionGrid.CellsInRadius(0f, 0f, 100000000f, 255);
+        sw.Stop();
+        Assert.True(cells.Count <= PollutionGrid.Resolution * PollutionGrid.Resolution);
+        Assert.True(sw.ElapsedMilliseconds < 2000, "CellsInRadius took " + sw.ElapsedMilliseconds + "ms");
+    }
 }

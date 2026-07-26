@@ -39,9 +39,8 @@ namespace NuclearMeltdown.Game
             if (outcome.Contaminate)
             {
                 long startTicks = SimulationManager.instance.m_currentGameTime.Ticks;
-                // 汚染半径は Scale が大きいとマップを覆うため、メートル単位の上限でクランプする。
-                float radius = Mathf.Min(ModConfig.DefaultRadiusMeters * outcome.ContaminationScale,
-                    ModConfig.ContaminationRadiusMax);
+                // 汚染半径も上限なし（規模に比例）。
+                float radius = ModConfig.DefaultRadiusMeters * outcome.ContaminationScale;
                 ContaminationManager.AddZone(new ContaminationZone(position.x, position.z, radius, startTicks));
             }
 
@@ -67,13 +66,17 @@ namespace NuclearMeltdown.Game
             var pos2d = new Vector2(position.x, position.z);
             int seed = (int)SimulationManager.instance.m_randomizer.Int32(1000000u);
 
-            float craterRadius = Mathf.Min(ModConfig.CraterRadiusBase * scale, ModConfig.CraterRadiusMax);
-            float craterDepth = Mathf.Min(ModConfig.CraterDepthBase * scale, ModConfig.CraterDepthMax);
-            float removeRadius = ModConfig.RemoveRadiusBase * scale;      // 内側=全破壊
-            float destMin = ModConfig.DestructionRadiusMinBase * scale;
-            float destMax = ModConfig.DestructionRadiusMaxBase * scale;
+            // クレーターの上限は撤廃（出力に比例してどこまでも大きくなる）。
+            float craterRadius = ModConfig.CraterRadiusBase * scale;
+            float craterDepth = ModConfig.CraterDepthBase * scale;
+            // 破壊/延焼半径は EffectRadiusMax(マップ全域を覆う値)で丸める。これを超えても
+            // 結果は「マップ消失」で同じだが、DisasterHelpers の走査が無駄に重くなるため。
+            float cap = ModConfig.EffectRadiusMax;
+            float removeRadius = Mathf.Min(ModConfig.RemoveRadiusBase * scale, cap);   // 内側=全破壊
+            float destMin = Mathf.Min(ModConfig.DestructionRadiusMinBase * scale, cap);
+            float destMax = Mathf.Min(ModConfig.DestructionRadiusMaxBase * scale, cap);
             float burnMin = destMax;
-            float burnMax = ModConfig.BurnRadiusMaxBase * scale;
+            float burnMax = Mathf.Min(ModConfig.BurnRadiusMaxBase * scale, cap);
             float totalRadius = burnMax;
 
             // クレーター(地形変形)

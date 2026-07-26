@@ -21,21 +21,24 @@ namespace NuclearMeltdown.Game
         // 爆発（クレーター＋範囲建物破壊）の基準半径(Scale 1.0 相当)。実際は Scale 倍される。
         public const float CraterRadiusBase = 60f;         // クレーター半径
         public const float CraterDepthBase = 16f;          // クレーター深さ
-        public const float CraterRadiusMax = 250f;         // クレーター半径の上限(地形破壊防止)
-        public const float CraterDepthMax = 50f;           // クレーター深さの上限
+        // クレーターの半径/深さに上限は設けない（規模に比例してどこまでも大きくなる）。
         public const float RemoveRadiusBase = 60f;         // 内側=全破壊半径
         public const float DestructionRadiusMinBase = 100f; // 破壊減衰の内縁
         public const float DestructionRadiusMaxBase = 160f; // 破壊減衰の外縁
         public const float BurnRadiusMaxBase = 200f;       // 延焼の外縁
 
-        // 「原発の出力に応じた災害規模」モードの設定。Scale = cbrt(出力 / ReferenceOutput)。
-        // 基準は Workshop の大型原発アセット相当(40000)。バニラ原発(640)は小規模(≒0.25)、
-        // 出力が桁違いに大きいアセットでもはっきり差が出るよう上限を大きめに取る。
-        public const int ReferenceOutput = 40000;          // Scale 1.0 の基準出力（大型原発アセット相当）
-        public const float OutputScaleMin = 0.25f;         // 規模の下限
-        public const float OutputScaleMax = 30f;           // 規模の上限（超大出力アセットでも差が出るよう緩和）
-        // 汚染だけは半径が巨大化しやすい(基準700m×Scale)ため、別途メートル単位で上限を設ける。
-        public const float ContaminationRadiusMax = 5000f;
+        // 「原発の出力に応じた災害規模」モードの設定。Scale = 出力 / ReferenceOutput（単純比例）。
+        // 基準はバニラ原子力発電所(640MW)＝Scale 1.0。出力2倍なら被害半径も2倍。
+        // 実在アセットの上限は3200MW前後＝Scale 5.0。上限は設けない（極端な出力でマップが
+        // 消し飛ぶのは仕様として許容する）。
+        public const int ReferenceOutput = 640;            // Scale 1.0 の基準出力（バニラ原発 640MW）
+        public const float OutputScaleMin = 0.1f;          // 規模の下限（小出力でも最低限の被害）
+        public const float OutputScaleMax = float.MaxValue; // 上限なし（青天井）
+        // 汚染半径にも上限は設けない（基準700m×Scale がそのまま適用される）。
+        // ただし DisasterHelpers に渡す破壊/延焼半径だけは、マップ全域を十分覆う値で丸める。
+        // マップは約17.3km四方なので、これ以上は走査コストが増えるだけで見た目は変わらない
+        // （マップ消失という結果は同じ。ゲームが固まるのを防ぐための実務上の上限）。
+        public const float EffectRadiusMax = 20000f;
 
         public static void Log(string msg)
         {

@@ -70,7 +70,11 @@ namespace NuclearMeltdown.Game.Simulation
             ushort[] grid = bm.m_buildingGrid;
             int gx = Mathf.Clamp((int)(zone.CenterX / 64f + 135f), 0, 269);
             int gz = Mathf.Clamp((int)(zone.CenterZ / 64f + 135f), 0, 269);
-            int cellRadius = (int)(zone.Radius / 64f) + 1;
+            // 建物グリッドは 270x270。巨大な汚染半径(超高出力の原発)でも走査はグリッド全体で
+            // 足りるので上限を掛ける。これが無いと毎16tickで数千万回の空ループになり固まる。
+            const int gridMax = 270;
+            long rawCellRadius = (long)(zone.Radius / 64f) + 1;
+            int cellRadius = rawCellRadius > gridMax ? gridMax : (int)rawCellRadius;
             const Building.Flags dead = Building.Flags.Abandoned | Building.Flags.BurnedDown
                 | Building.Flags.Collapsed | Building.Flags.Deleted;
             for (int dz = -cellRadius; dz <= cellRadius; dz++)
