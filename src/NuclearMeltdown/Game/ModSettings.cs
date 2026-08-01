@@ -30,15 +30,24 @@ namespace NuclearMeltdown.Game
         private static SavedInt _explosionEnabled;
         private static SavedInt _contaminationEnabled;
 
+        // 設定ファイルの登録は1回だけ行う。Ensure() は各getterから呼ばれるため、毎回
+        // AddSettingsFile すると CS 内部が「同じキー」例外→**設定ファイルを削除**して空で
+        // 作り直すループに入り、プレイヤーの設定が保存されなくなる（Siren Alert で発覚）。
+        private static bool _fileRegistered;
+
         public static void Ensure()
         {
-            try
+            if (!_fileRegistered)
             {
-                GameSettings.AddSettingsFile(new SettingsFile { fileName = FileName });
-            }
-            catch (System.Exception)
-            {
-                // 既に登録済みなら無視。
+                _fileRegistered = true; // 例外時も再試行しない
+                try
+                {
+                    GameSettings.AddSettingsFile(new SettingsFile { fileName = FileName });
+                }
+                catch (System.Exception e)
+                {
+                    ModConfig.LogError("AddSettingsFile(" + FileName + "): " + e.Message);
+                }
             }
             if (_scaleMode == null) _scaleMode = new SavedInt("scaleMode", FileName, (int)MeltdownScaleMode.Random, true);
             if (_fixedScaleX10 == null) _fixedScaleX10 = new SavedInt("fixedScaleX10", FileName, FixedScaleDefault, true);
