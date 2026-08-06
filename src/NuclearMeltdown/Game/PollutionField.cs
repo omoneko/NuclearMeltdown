@@ -2,7 +2,7 @@ using NuclearMeltdown.Core;
 
 namespace NuclearMeltdown.Game
 {
-    /// <summary>NaturalResourceManager の土壌汚染セルへの読み書きラッパ。</summary>
+    /// <summary>Read/write wrapper around NaturalResourceManager's ground pollution cells.</summary>
     public static class PollutionField
     {
         public static byte GetPollution(int index)
@@ -24,7 +24,7 @@ namespace NuclearMeltdown.Game
             return false;
         }
 
-        /// <summary>セルの汚染を dose.Intensity に上書き設定する（除染で濃度を下げる用）。実際に書き換えたら true。</summary>
+        /// <summary>Overwrites a cell with dose.Intensity, used to lower it during decontamination. True if it actually changed.</summary>
         public static bool SetDose(CellDose dose)
         {
             var arr = NaturalResourceManager.instance.m_naturalResources;
@@ -57,7 +57,7 @@ namespace NuclearMeltdown.Game
             arr[index].m_pollution = (byte)(v < 0 ? 0 : (v > 255 ? 255 : v));
         }
 
-        /// <summary>汚染テクスチャを更新（cellX/cellZ範囲）。</summary>
+        /// <summary>Refreshes the pollution texture over the given cellX/cellZ range.</summary>
         public static void Refresh(int minX, int minZ, int maxX, int maxZ)
         {
             NaturalResourceManager.instance.AreaModifiedB(minX, minZ, maxX, maxZ);

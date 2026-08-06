@@ -3,19 +3,21 @@ using System;
 namespace NuclearMeltdown.Core
 {
     /// <summary>
-    /// 原発の発電出力から災害規模(Scale)を求める純粋関数（UnityEngine非依存）。
-    /// Scale は出力に単純比例する: Scale = output / referenceOutput
-    /// （出力2倍なら被害半径も2倍）。ただし出力が桁違いのアセット(数億)では半径がマップを
-    /// 大きく超えて DisasterHelpers が暴走するため、maxScale で安全側にクランプする。
+    /// Turns a plant's power output into a disaster scale (no UnityEngine dependency).
+    /// The scale is directly proportional to the output: scale = output / referenceOutput,
+    /// so twice the output means twice the damage radius. Assets with outputs orders of
+    /// magnitude larger (hundreds of millions) would push the radius far past the map and send
+    /// DisasterHelpers into a spin, so the result is clamped by maxScale for safety.
     /// </summary>
     public static class OutputScale
     {
-        /// <summary>バニラ原子力発電所の m_electricityProduction。</summary>
+        /// <summary>m_electricityProduction of the vanilla nuclear power plant.</summary>
         public const int VanillaNuclearOutput = 640;
 
         /// <summary>
-        /// 出力 output（電力生産量）から Scale を返す（出力に比例）。
-        /// output が0以下なら minScale。結果は [minScale, maxScale] にクランプ。
+        /// Scale for the given output (electricity production), proportional to it.
+        /// An output of zero or less yields minScale. The result is clamped to
+        /// [minScale, maxScale].
         /// </summary>
         public static float FromOutput(int output, int referenceOutput, float minScale, float maxScale)
         {
@@ -25,7 +27,7 @@ namespace NuclearMeltdown.Core
 
             if (output <= 0) return minScale;
 
-            float scale = output / (float)referenceOutput; // 単純比例
+            float scale = output / (float)referenceOutput; // directly proportional
             if (scale < minScale) return minScale;
             if (scale > maxScale) return maxScale;
             return scale;

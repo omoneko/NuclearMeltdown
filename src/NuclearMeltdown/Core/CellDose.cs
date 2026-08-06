@@ -1,6 +1,6 @@
 namespace NuclearMeltdown.Core
 {
-    /// <summary>汚染を適用する単一セル（グリッドindex）とその濃度(0-255)。</summary>
+    /// <summary>One grid cell (by index) to contaminate, and the intensity to apply (0-255).</summary>
     public struct CellDose
     {
         public int Index;

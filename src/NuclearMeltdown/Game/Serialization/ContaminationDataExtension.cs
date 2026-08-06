@@ -4,7 +4,7 @@ using NuclearMeltdown.Core;
 
 namespace NuclearMeltdown.Game.Serialization
 {
-    /// <summary>汚染ゾーン台帳をセーブデータへ永続化する。ゲームが自動検出。</summary>
+    /// <summary>Persists the contamination zone ledger into the save game. Discovered by the game.</summary>
     public class ContaminationDataExtension : SerializableDataExtensionBase
     {
         private const string DataId = "NuclearMeltdown.Contamination.v1";

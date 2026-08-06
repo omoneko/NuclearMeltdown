@@ -4,16 +4,19 @@ using UnityEngine;
 
 namespace NuclearMeltdown.Game
 {
-    /// <summary>崩壊時の爆発エフェクトと汚染ゾーン発生。</summary>
+    /// <summary>The explosion effect and the contamination zone raised when a plant is destroyed.</summary>
     public static class MeltdownEffect
     {
         /// <summary>
-        /// 原発崩壊時の効果を発生させる。electricityProduction は「出力に応じた規模」モード用の
-        /// 発電出力（0=不明なら基準値扱い）。規模の決め方と爆発/汚染の有無はオプションに従う。
+        /// Raises the effects of a destroyed nuclear plant. electricityProduction feeds the
+        /// "scale from output" mode (0 means unknown and falls back to the baseline). How the
+        /// scale is chosen, and whether there is an explosion or contamination at all, follows
+        /// the options.
         /// </summary>
         public static void Trigger(Vector3 position, int electricityProduction)
         {
-            // ゲームの決定論RNG(セーブ再現性を保つ)で 0-99 を抽選（Random モード用）
+            // 0-99 drawn from the game's deterministic RNG, so saves stay reproducible
+            // (used by the Random mode).
             int roll = (int)SimulationManager.instance.m_randomizer.Int32(100u);
 
             MeltdownScaleMode mode = ModSettings.ScaleMode;
@@ -28,30 +31,33 @@ namespace NuclearMeltdown.Game
                     scale = ModSettings.FixedScale;
                     break;
                 default:
-                    scale = 0f; // Random は確率テーブル側で決まる
+                    scale = 0f; // Random gets its scale from the probability table
                     break;
             }
 
             MeltdownOutcome outcome = MeltdownOutcomeSelector.Select(
                 mode, roll, scale, ModSettings.ExplosionEnabled, ModSettings.ContaminationEnabled);
 
-            // 汚染を先に確定（エフェクト取得失敗で汚染登録を失わないため）
+            // Register the contamination first, so a failure fetching the visual effect cannot
+            // cost us the zone.
             if (outcome.Contaminate)
             {
                 long startTicks = SimulationManager.instance.m_currentGameTime.Ticks;
-                // 汚染半径も上限なし（規模に比例）。
+                // The contamination radius is uncapped as well - proportional to the scale.
                 float radius = ModConfig.DefaultRadiusMeters * outcome.ContaminationScale;
                 ContaminationManager.AddZone(new ContaminationZone(position.x, position.z, radius, startTicks));
             }
 
-            // 爆発は独立して try/catch（視覚効果の失敗が汚染に影響しないように）
+            // The explosion gets its own try/catch so a visual failure cannot affect the
+            // contamination.
             if (outcome.Explode)
             {
                 try { PlayExplosion(position, outcome.ExplosionScale); }
                 catch (System.Exception e) { ModConfig.LogError("explosion error: " + e); }
             }
 
-            // output は内部単位。UI表示の MW は概ね output/62.5 なので、確認しやすいよう併記する。
+            // output is in internal units; the MW figure in the UI is roughly output/62.5, so
+            // both are logged to make this easy to check.
             ModConfig.Log("Meltdown mode=" + mode
                 + " output=" + electricityProduction + "(~" + (electricityProduction / 62.5f).ToString("0") + "MW)"
                 + " roll=" + roll
@@ -60,38 +66,42 @@ namespace NuclearMeltdown.Game
         }
 
         /// <summary>
-        /// 爆発 = クレーター形成 + 範囲内の建物/道路/樹木/小物の破壊 + (DLC時)メテオ視覚効果。
-        /// クレーター/破壊はゲームの災害ヘルパ(DisasterHelpers, 基本ゲーム側=DLC非依存)を流用し、
-        /// 半径類を Scale 倍する。地形破壊を避けるためクレーターには上限を設ける。
+        /// The explosion: a crater, destruction of the buildings, roads, trees and props in
+        /// range, and - with the DLC - the meteor visual. The crater and the destruction reuse
+        /// the game's own DisasterHelpers (part of the base game, no DLC needed) with every
+        /// radius multiplied by the scale.
         /// </summary>
         private static void PlayExplosion(Vector3 position, float scale)
         {
             var pos2d = new Vector2(position.x, position.z);
             int seed = (int)SimulationManager.instance.m_randomizer.Int32(1000000u);
 
-            // クレーターの上限は撤廃（出力に比例してどこまでも大きくなる）。
+            // The crater is deliberately uncapped - it grows with the output without limit.
             float craterRadius = ModConfig.CraterRadiusBase * scale;
             float craterDepth = ModConfig.CraterDepthBase * scale;
-            // 破壊/延焼半径は EffectRadiusMax(マップ全域を覆う値)で丸める。これを超えても
-            // 結果は「マップ消失」で同じだが、DisasterHelpers の走査が無駄に重くなるため。
+            // The destruction and fire radii are rounded down to EffectRadiusMax, which already
+            // covers the whole map. Beyond that the result is the same (the map is gone) while
+            // the DisasterHelpers scan just gets needlessly expensive.
             float cap = ModConfig.EffectRadiusMax;
-            float removeRadius = Mathf.Min(ModConfig.RemoveRadiusBase * scale, cap);   // 内側=全破壊
+            float removeRadius = Mathf.Min(ModConfig.RemoveRadiusBase * scale, cap);   // inner, everything destroyed
             float destMin = Mathf.Min(ModConfig.DestructionRadiusMinBase * scale, cap);
             float destMax = Mathf.Min(ModConfig.DestructionRadiusMaxBase * scale, cap);
             float burnMin = destMax;
             float burnMax = Mathf.Min(ModConfig.BurnRadiusMaxBase * scale, cap);
             float totalRadius = burnMax;
 
-            // クレーター(地形変形)
+            // The crater (terrain deformation).
             DisasterHelpers.MakeCrater(pos2d, craterRadius, craterDepth, raiseEdges: true);
-            // 範囲内の建物・道路・樹木・小物を破壊。
-            // preRadius は「衝撃波が到達した外周半径」で、DestroyBuildings 内の門番
-            // (num7 < preRadius) と走査範囲を決める。ここを外周(totalRadius)にしないと
-            // 何も破壊されない。removeRadius 内(中心=原発)は demolish=true で土台ごと撤去される。
+            // Destroy the buildings, roads, trees and props in range.
+            // preRadius is the outer radius the shock wave reached; it drives both the guard
+            // inside DestroyBuildings (num7 < preRadius) and the area scanned. Pass anything
+            // other than the outer radius (totalRadius) here and nothing gets destroyed at all.
+            // Inside removeRadius (centred on the plant) demolish=true removes the foundations too.
             DisasterHelpers.DestroyStuff(seed, null, position, totalRadius, totalRadius, removeRadius,
                 destMin, destMax, burnMin, burnMax);
 
-            // メテオ視覚効果/効果音は Natural Disasters DLC がある場合のみ流用(無ければ破壊のみ)
+            // The meteor visual and sound are borrowed only if the Natural Disasters DLC is
+            // present; without it the destruction still happens, just without the visual.
             EffectInfo effect = ResolveExplosionEffect();
             if (effect != null)
             {
@@ -108,10 +118,11 @@ namespace NuclearMeltdown.Game
 
         private static EffectInfo ResolveExplosionEffect()
         {
-            // メテオ(隕石)災害の実体は DisasterInfo/DisasterAI ではなく、
-            // VehicleInfo に載る MeteorAI (VehicleAI 派生) として実装されている。
-            // (DisasterAI : PrefabAI と MeteorAI : VehicleAI : PrefabAI は無関係な兄弟クラスのため
-            //  info.m_disasterAI as MeteorAI はコンパイルエラー CS0039 になる — 要デコンパイル検証)
+            // The meteor disaster is not implemented as a DisasterInfo/DisasterAI at all: it is
+            // a MeteorAI (derived from VehicleAI) carried by a VehicleInfo.
+            // (DisasterAI : PrefabAI and MeteorAI : VehicleAI : PrefabAI are unrelated sibling
+            //  classes, so info.m_disasterAI as MeteorAI fails to compile with CS0039 -
+            //  confirmed by decompiling.)
             int count = PrefabCollection<VehicleInfo>.LoadedCount();
             for (int i = 0; i < count; i++)
             {

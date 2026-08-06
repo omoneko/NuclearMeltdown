@@ -39,6 +39,6 @@ public class ZoneSerializerTests
     [Fact]
     public void Corrupt_input_returns_empty_without_throwing()
     {
-        Assert.Empty(ZoneSerializer.Deserialize(new byte[] { 9, 9, 9 })); // 未知Version
+        Assert.Empty(ZoneSerializer.Deserialize(new byte[] { 9, 9, 9 })); // unknown version
     }
 }

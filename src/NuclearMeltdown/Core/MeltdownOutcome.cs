@@ -1,8 +1,9 @@
 namespace NuclearMeltdown.Core
 {
     /// <summary>
-    /// 原発破壊時の抽選結果。爆発の有無・規模(Scale)、汚染の有無・規模(Scale)を保持する。
-    /// Scale は現在の基準汚染(700m)を 1.0 とした倍率。
+    /// Result drawn when a nuclear plant is destroyed: whether it explodes and at what scale,
+    /// and whether it contaminates and at what scale. Scale is a multiplier where 1.0 is the
+    /// current baseline contamination radius (700 m).
     /// </summary>
     public struct MeltdownOutcome
     {
@@ -21,16 +22,16 @@ namespace NuclearMeltdown.Core
     }
 
     /// <summary>
-    /// 0-99 の乱数から破壊結果を決定する確率テーブル。
-    ///   5%(0-4)  : Scale 10.0 の核爆発 + Scale 10.0 の汚染
-    ///  15%(5-19) : Scale 5.5 の核爆発 + Scale 5.5 の汚染
-    ///  45%(20-64): Scale 1.0 の核爆発 + Scale 1.0 の汚染
-    ///  30%(65-94): 爆発なし + Scale 1.0 の汚染のみ
-    ///   5%(95-99): 倒壊のみ（爆発なし・汚染なし）
+    /// Probability table turning a 0-99 roll into an outcome.
+    ///   5% (0-4)  : scale 10.0 nuclear explosion + scale 10.0 contamination
+    ///  15% (5-19) : scale 5.5 nuclear explosion + scale 5.5 contamination
+    ///  45% (20-64): scale 1.0 nuclear explosion + scale 1.0 contamination
+    ///  30% (65-94): no explosion, scale 1.0 contamination only
+    ///   5% (95-99): collapse only (no explosion, no contamination)
     /// </summary>
     public static class MeltdownOutcomeTable
     {
-        /// <param name="roll">0-99 の乱数（範囲外は 0-99 にクランプ）。</param>
+        /// <param name="roll">0-99 random number (values outside are clamped into 0-99).</param>
         public static MeltdownOutcome FromRoll(int roll)
         {
             if (roll < 0) roll = 0;

@@ -35,7 +35,7 @@ public class PollutionGridTests
     [Fact]
     public void CellsInRadius_excludes_cells_outside_radius()
     {
-        // 半径 1セル(33.75m)未満 → 実質中心セルのみ
+        // A radius under one cell (33.75 m) means effectively just the centre cell.
         var cells = PollutionGrid.CellsInRadius(0f, 0f, 10f, 255);
         Assert.All(cells, c =>
         {
@@ -57,8 +57,9 @@ public class PollutionGridTests
     [Fact]
     public void CellsInRadius_huge_radius_is_bounded_and_fast()
     {
-        // 超高出力の原発で半径が桁違いになっても、走査はグリッド(512x512)内に収まり即座に返る
-        // （上限が無いと数千万回の空ループでゲームが固まる）。
+        // Even when a very high output plant makes the radius orders of magnitude too large,
+        // the scan stays inside the 512x512 grid and returns at once (without the cap it turns
+        // into tens of millions of empty iterations and freezes the game).
         var sw = System.Diagnostics.Stopwatch.StartNew();
         var cells = PollutionGrid.CellsInRadius(0f, 0f, 100000000f, 255);
         sw.Stop();

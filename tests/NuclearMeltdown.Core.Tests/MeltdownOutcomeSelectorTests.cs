@@ -31,9 +31,9 @@ public class MeltdownOutcomeSelectorTests
     public void Contamination_can_be_disabled()
     {
         var o = MeltdownOutcomeSelector.Select(MeltdownScaleMode.Fixed, 0, 3f, true, false);
-        Assert.True(o.Explode);              // 爆発は残る
+        Assert.True(o.Explode);              // the explosion still happens
         Assert.Equal(3f, o.ExplosionScale, 3);
-        Assert.False(o.Contaminate);         // 降下物なし
+        Assert.False(o.Contaminate);         // but no fallout
         Assert.Equal(0f, o.ContaminationScale, 3);
     }
 
@@ -41,9 +41,9 @@ public class MeltdownOutcomeSelectorTests
     public void Explosion_can_be_disabled_contamination_only()
     {
         var o = MeltdownOutcomeSelector.Select(MeltdownScaleMode.Fixed, 0, 3f, false, true);
-        Assert.False(o.Explode);             // 爆発なし
+        Assert.False(o.Explode);             // no explosion
         Assert.Equal(0f, o.ExplosionScale, 3);
-        Assert.True(o.Contaminate);          // 汚染のみ
+        Assert.True(o.Contaminate);          // contamination only
         Assert.Equal(3f, o.ContaminationScale, 3);
     }
 
@@ -58,7 +58,7 @@ public class MeltdownOutcomeSelectorTests
     [Fact]
     public void Random_mode_also_respects_toggles()
     {
-        // roll=0 は本来 explode+contaminate だが、両方OFFなら倒壊のみになる
+        // roll=0 normally means explode plus contaminate; with both off it is a collapse only.
         var o = MeltdownOutcomeSelector.Select(MeltdownScaleMode.Random, 0, 0f, false, false);
         Assert.False(o.Explode);
         Assert.False(o.Contaminate);

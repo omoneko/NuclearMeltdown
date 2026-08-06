@@ -2,7 +2,7 @@ using NuclearMeltdown.Core;
 
 namespace NuclearMeltdown.Game
 {
-    /// <summary>建物が原子力発電所かどうかを判定する。</summary>
+    /// <summary>Decides whether a building is a nuclear power plant.</summary>
     public static class NuclearDetector
     {
         public static bool IsNuclearPlant(ushort buildingID)
@@ -11,13 +11,15 @@ namespace NuclearMeltdown.Game
             var info = BuildingManager.instance.m_buildings.m_buffer[buildingID].Info;
             if (info == null || info.m_buildingAI == null) return false;
             if (!(info.m_buildingAI is PowerPlantAI)) return false;
-            // バニラ "Nuclear" に加え Workshop 原発アセット（"NPP" 等）も判定する。
+            // Besides the vanilla "Nuclear", this also matches Workshop plants named
+            // differently ("NPP" and so on).
             return NuclearNameMatcher.Matches(info.name);
         }
 
         /// <summary>
-        /// 原発の発電出力（PowerPlantAI.m_electricityProduction）を返す。取得できなければ 0。
-        /// 「出力に応じた災害規模」で使う（バニラ原発=640 が基準）。
+        /// The plant's power output (PowerPlantAI.m_electricityProduction), or 0 if it cannot
+        /// be read. Feeds the "scale from output" mode, where the vanilla plant's 640 is the
+        /// baseline.
         /// </summary>
         public static int GetElectricityProduction(ushort buildingID)
         {

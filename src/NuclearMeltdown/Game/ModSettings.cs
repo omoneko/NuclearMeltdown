@@ -4,15 +4,18 @@ using NuclearMeltdown.Core;
 namespace NuclearMeltdown.Game
 {
     /// <summary>
-    /// 永続設定（災害規模モード・固定倍率・爆発/汚染のON/OFF）。ColossalFramework の SavedInt を使う。
-    /// 設定ファイル名は MOD/アセンブリ名("NuclearMeltdown")と別名にする。同名だと CS の設定辞書で
-    /// MOD登録キーと衝突し「同じキーが既に存在」例外→設定削除ループになる。
+    /// Persisted settings (scale mode, fixed multiplier, explosion and contamination on/off),
+    /// stored through ColossalFramework's SavedInt.
+    /// The settings file must NOT be named after the mod/assembly ("NuclearMeltdown"): an
+    /// identical name collides with the mod's own key in the CS settings dictionary, which
+    /// throws "an item with the same key already exists" and puts the game into a loop of
+    /// deleting the settings file.
     /// </summary>
     public static class ModSettings
     {
         public const string FileName = "NuclearMeltdownSettings";
 
-        /// <summary>規模モードの表示名（インデックス = MeltdownScaleMode の値）。</summary>
+        /// <summary>Display names of the scale modes (index = the MeltdownScaleMode value).</summary>
         public static readonly string[] ScaleModeNames =
         {
             "Random (probability table)",
@@ -20,7 +23,7 @@ namespace NuclearMeltdown.Game
             "Fixed scale"
         };
 
-        // 固定倍率スライダーは 0.5〜10.0 を 10倍の整数(5〜100)で保存する。
+        // The fixed-scale slider covers 0.5 to 10.0, stored as an integer times ten (5 to 100).
         public const int FixedScaleMin = 5;
         public const int FixedScaleMax = 100;
         public const int FixedScaleDefault = 10; // = 1.0
@@ -30,16 +33,17 @@ namespace NuclearMeltdown.Game
         private static SavedInt _explosionEnabled;
         private static SavedInt _contaminationEnabled;
 
-        // 設定ファイルの登録は1回だけ行う。Ensure() は各getterから呼ばれるため、毎回
-        // AddSettingsFile すると CS 内部が「同じキー」例外→**設定ファイルを削除**して空で
-        // 作り直すループに入り、プレイヤーの設定が保存されなくなる（Siren Alert で発覚）。
+        // The settings file is registered exactly once. Ensure() runs from every getter, and
+        // calling AddSettingsFile each time makes CS throw "same key" internally, then **delete
+        // the settings file** and recreate it empty - a loop in which the player's options are
+        // never saved (found while working on Siren Alert).
         private static bool _fileRegistered;
 
         public static void Ensure()
         {
             if (!_fileRegistered)
             {
-                _fileRegistered = true; // 例外時も再試行しない
+                _fileRegistered = true; // do not retry, even if it threw
                 try
                 {
                     GameSettings.AddSettingsFile(new SettingsFile { fileName = FileName });
@@ -51,8 +55,8 @@ namespace NuclearMeltdown.Game
             }
             if (_scaleMode == null) _scaleMode = new SavedInt("scaleMode", FileName, (int)MeltdownScaleMode.Random, true);
             if (_fixedScaleX10 == null) _fixedScaleX10 = new SavedInt("fixedScaleX10", FileName, FixedScaleDefault, true);
-            if (_explosionEnabled == null) _explosionEnabled = new SavedInt("explosionEnabled", FileName, 1, true);       // 既定ON
-            if (_contaminationEnabled == null) _contaminationEnabled = new SavedInt("contaminationEnabled", FileName, 1, true); // 既定ON
+            if (_explosionEnabled == null) _explosionEnabled = new SavedInt("explosionEnabled", FileName, 1, true);       // on by default
+            if (_contaminationEnabled == null) _contaminationEnabled = new SavedInt("contaminationEnabled", FileName, 1, true); // on by default
         }
 
         public static SavedInt ScaleModeSetting { get { Ensure(); return _scaleMode; } }
@@ -60,7 +64,7 @@ namespace NuclearMeltdown.Game
         public static SavedInt ExplosionEnabledSetting { get { Ensure(); return _explosionEnabled; } }
         public static SavedInt ContaminationEnabledSetting { get { Ensure(); return _contaminationEnabled; } }
 
-        /// <summary>災害規模の決定方式。</summary>
+        /// <summary>How the scale of the disaster is decided.</summary>
         public static MeltdownScaleMode ScaleMode
         {
             get
@@ -71,13 +75,13 @@ namespace NuclearMeltdown.Game
             }
         }
 
-        /// <summary>Fixed モードで使う倍率（0.5〜10.0）。</summary>
+        /// <summary>Multiplier used by the Fixed mode (0.5 to 10.0).</summary>
         public static float FixedScale { get { return FixedScaleSetting.value / 10f; } }
 
-        /// <summary>爆発（クレーター/範囲破壊）を発生させるか。</summary>
+        /// <summary>Whether the explosion (crater and area destruction) happens at all.</summary>
         public static bool ExplosionEnabled { get { return ExplosionEnabledSetting.value != 0; } }
 
-        /// <summary>放射性降下物（土壌汚染）を発生させるか。</summary>
+        /// <summary>Whether fallout (ground contamination) happens at all.</summary>
         public static bool ContaminationEnabled { get { return ContaminationEnabledSetting.value != 0; } }
     }
 }

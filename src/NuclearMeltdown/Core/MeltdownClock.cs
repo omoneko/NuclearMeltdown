@@ -2,7 +2,7 @@ using System;
 
 namespace NuclearMeltdown.Core
 {
-    /// <summary>汚染ゾーンの時間経過による消滅判定（ゲーム内時刻ベース）。</summary>
+    /// <summary>Decides when a contamination zone has aged out, based on in-game time.</summary>
     public static class MeltdownClock
     {
         public static bool HasExpired(long startTicks, long nowTicks, int years)

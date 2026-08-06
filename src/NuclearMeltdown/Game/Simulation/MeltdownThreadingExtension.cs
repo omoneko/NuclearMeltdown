@@ -7,18 +7,19 @@ using UnityEngine;
 namespace NuclearMeltdown.Game.Simulation
 {
     /// <summary>
-    /// 毎tickで汚染ゾーンを維持し、50年経過で解除する。専用の「Decontamination facility」建物が
-    /// ゾーン付近で稼働している場合のみ、汚染をゲーム内1か月あたり5%（相対）除去する。
-    /// <b>汚水処理場では除染されない</b>（核ミサイルMODと同一仕様に統一）。
-    /// ゲームがModアセンブリ内のIThreadingExtension実装を自動検出して駆動する。
+    /// Maintains the contamination zones every tick and lifts them after 50 years. The
+    /// contamination is only removed - 5% relative per in-game month - while a dedicated
+    /// "Decontamination facility" building is operating near the zone.
+    /// <b>A water treatment plant does not decontaminate</b>, matching the nuclear missile mod.
+    /// The game discovers and drives any IThreadingExtension in a mod assembly on its own.
     /// </summary>
     public class MeltdownThreadingExtension : ThreadingExtensionBase
     {
-        private static readonly long TicksPerMonth = TimeSpan.FromDays(30).Ticks; // ゲーム内1か月=30日相当
+        private static readonly long TicksPerMonth = TimeSpan.FromDays(30).Ticks; // an in-game month is 30 days
 
         private int _tickCounter;
-        private long _lastTicks;                // 前回処理時のゲーム内時刻（除染の経過月算出用）
-        private const int ProcessInterval = 16; // 16tickに1回処理（負荷軽減）
+        private long _lastTicks;                // game time at the last pass, for the elapsed months
+        private const int ProcessInterval = 16; // process every 16 ticks to keep the cost down
 
         public override void OnAfterSimulationTick()
         {
@@ -28,14 +29,15 @@ namespace NuclearMeltdown.Game.Simulation
                 _tickCounter = 0;
 
                 long nowTicks = SimulationManager.instance.m_currentGameTime.Ticks;
-                // 経過月は処理サイクル間で測る。ゾーンが無くても時刻は前進させる（新ゾーンに空白期間を課さない=P2対策）。
+                // Elapsed months are measured between passes. The clock advances even with no
+                // zones, so a newly created zone is not charged for the time before it existed.
                 double deltaMonths = _lastTicks == 0 ? 0.0 : (nowTicks - _lastTicks) / (double)TicksPerMonth;
                 _lastTicks = nowTicks;
 
-                List<ContaminationZone> zones = ContaminationManager.Zones; // スナップショット
+                List<ContaminationZone> zones = ContaminationManager.Zones; // snapshot
                 if (zones.Count == 0) return;
 
-                // 後ろから走査してインデックス除去に対応
+                // Walk backwards so removing by index stays valid.
                 for (int i = zones.Count - 1; i >= 0; i--)
                 {
                     ContaminationZone zone = zones[i];
@@ -50,11 +52,11 @@ namespace NuclearMeltdown.Game.Simulation
 
                     if (deltaMonths > 0.0 && IsDecontaminationActive(zone))
                     {
-                        DecontaminateZone(zone, i, deltaMonths); // 5%/月 相対除去
+                        DecontaminateZone(zone, i, deltaMonths); // 5% per month, relative
                         continue;
                     }
 
-                    ContaminationManager.ReassertZone(zone); // 自然減衰対策で維持
+                    ContaminationManager.ReassertZone(zone); // hold it against the natural decay
                 }
             }
             catch (System.Exception e)
@@ -63,15 +65,20 @@ namespace NuclearMeltdown.Game.Simulation
             }
         }
 
-        /// <summary>ゾーン中心付近に除染施設(名称に Decontamination を含む・完成/非破壊)が存在するか。</summary>
+        /// <summary>
+        /// Whether a decontamination facility (name contains Decontamination, completed and not
+        /// destroyed) stands near the centre of the zone.
+        /// </summary>
         private bool IsDecontaminationActive(ContaminationZone zone)
         {
             var bm = BuildingManager.instance;
             ushort[] grid = bm.m_buildingGrid;
             int gx = Mathf.Clamp((int)(zone.CenterX / 64f + 135f), 0, 269);
             int gz = Mathf.Clamp((int)(zone.CenterZ / 64f + 135f), 0, 269);
-            // 建物グリッドは 270x270。巨大な汚染半径(超高出力の原発)でも走査はグリッド全体で
-            // 足りるので上限を掛ける。これが無いと毎16tickで数千万回の空ループになり固まる。
+            // The building grid is 270x270. Even a huge contamination radius (a very high
+            // output plant) never needs to scan more than the whole grid, so the radius is
+            // capped. Without this it becomes tens of millions of empty iterations every
+            // 16 ticks and the game freezes.
             const int gridMax = 270;
             long rawCellRadius = (long)(zone.Radius / 64f) + 1;
             int cellRadius = rawCellRadius > gridMax ? gridMax : (int)rawCellRadius;
@@ -93,7 +100,8 @@ namespace NuclearMeltdown.Game.Simulation
                     {
                         var flags = bm.m_buildings.m_buffer[id].m_flags;
                         var info = bm.m_buildings.m_buffer[id].Info;
-                        // カスタムアセットは Active が立たないことがあるため Completed＋非破壊で判定する。
+                        // Custom assets do not always get the Active flag, so the test is
+                        // Completed plus not destroyed.
                         if (info != null && info.name != null &&
                             info.name.IndexOf(ModConfig.DecontaminationNameKeyword, StringComparison.OrdinalIgnoreCase) >= 0 &&
                             (flags & Building.Flags.Completed) != Building.Flags.None &&
@@ -109,8 +117,10 @@ namespace NuclearMeltdown.Game.Simulation
         }
 
         /// <summary>
-        /// ゾーン濃度(float)を deltaMonths 分だけ相対除去（1か月で5%）し、下げた濃度をグリッドへ上書き反映する。
-        /// float 濃度に係数を掛け続けるので微小間隔でも端数が失われず着実に減衰し、下限まで下がればゾーン除去。
+        /// Removes deltaMonths worth of contamination from the zone's float intensity (5% per
+        /// month, relative) and writes the lowered value back over the grid. Because the factor
+        /// is applied to a float, even very short intervals lose nothing to rounding and the
+        /// decay is steady; once it reaches the floor the zone is removed.
         /// </summary>
         private void DecontaminateZone(ContaminationZone zone, int index, double deltaMonths)
         {
@@ -127,8 +137,8 @@ namespace NuclearMeltdown.Game.Simulation
             }
             else
             {
-                ContaminationManager.SetZoneAt(index, zone); // 台帳に下げた濃度を書き戻す
-                ContaminationManager.SetZone(zone);          // グリッドへ上書き反映
+                ContaminationManager.SetZoneAt(index, zone); // store the lowered value in the ledger
+                ContaminationManager.SetZone(zone);          // and write it over the grid
             }
         }
     }

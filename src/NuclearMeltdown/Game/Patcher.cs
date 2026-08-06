@@ -2,7 +2,7 @@ using HarmonyLib;
 
 namespace NuclearMeltdown.Game
 {
-    /// <summary>Harmonyパッチの適用/解除。</summary>
+    /// <summary>Applies and removes the Harmony patches.</summary>
     public static class Patcher
     {
         private static bool _patched;

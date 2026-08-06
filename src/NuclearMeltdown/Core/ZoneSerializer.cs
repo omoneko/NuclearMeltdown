@@ -4,12 +4,13 @@ using System.IO;
 namespace NuclearMeltdown.Core
 {
     /// <summary>
-    /// 汚染ゾーン台帳を byte[] に直列化/復元（セーブデータ保存用）。
-    /// v1: 濃度なし（読み込み時は 255 として復元）。v2: 濃度(float)を追加。旧セーブ互換のため両対応。
+    /// Serialises the contamination zone ledger to and from byte[] for the save game.
+    /// v1 carried no intensity (it is restored as 255); v2 added intensity as a float.
+    /// Both are read, so old saves keep working.
     /// </summary>
     public static class ZoneSerializer
     {
-        public const byte Version = 2; // v2: Intensity(float) を追加
+        public const byte Version = 2; // v2 added Intensity (float)
 
         public static byte[] Serialize(List<ContaminationZone> zones)
         {
@@ -50,14 +51,14 @@ namespace NuclearMeltdown.Core
                         float cz = r.ReadSingle();
                         float radius = r.ReadSingle();
                         long start = r.ReadInt64();
-                        float intensity = version >= 2 ? r.ReadSingle() : 255f; // 旧v1は最大濃度で復元
+                        float intensity = version >= 2 ? r.ReadSingle() : 255f; // v1 restores at full intensity
                         result.Add(new ContaminationZone(cx, cz, radius, start, intensity));
                     }
                 }
             }
             catch
             {
-                return new List<ContaminationZone>(); // 破損時は空
+                return new List<ContaminationZone>(); // corrupt data yields nothing
             }
             return result;
         }

@@ -2,43 +2,49 @@ using UnityEngine;
 
 namespace NuclearMeltdown.Game
 {
-    /// <summary>Mod全体の定数と共通ログ。</summary>
+    /// <summary>Mod-wide constants and shared logging.</summary>
     public static class ModConfig
     {
         public const string HarmonyId = "com.omone.nuclearmeltdown";
         public const float DefaultRadiusMeters = 700f;
         public const int ExpiryYears = 50;
-        // 除染は専用の「Decontamination facility」建物のみ（汚水処理場では除染されない）。
-        // 名称に下記キーワードを含む稼働中の建物がゾーン付近にあると、各セルの汚染を
-        // ゲーム内1か月あたり DecontaminationMonthlyFraction 相対除去する（核ミサイルMODと同一仕様）。
+        // Only a dedicated "Decontamination facility" building cleans up; a water treatment
+        // plant does not. An operating building whose name contains the keyword below, near a
+        // zone, removes DecontaminationMonthlyFraction of each cell's contamination per in-game
+        // month (the same rule the nuclear missile mod uses).
         public const string DecontaminationNameKeyword = "Decontamination";
-        public const float DecontaminationMonthlyFraction = 0.05f; // 1か月で5%除去（相対）
-        public const byte DecontaminationMinIntensity = 5;          // これ以下のセルは0にする
-        // 原発の名称判定キーワードは NuclearMeltdown.Core.NuclearNameMatcher に集約（テスト可能・"NPP"等に対応）。
+        public const float DecontaminationMonthlyFraction = 0.05f; // 5% removed per month (relative)
+        public const byte DecontaminationMinIntensity = 5;          // cells at or below this drop to 0
+        // Keywords identifying a nuclear plant live in NuclearMeltdown.Core.NuclearNameMatcher,
+        // so they stay testable and cover names like "NPP".
         public const byte MaxPollution = 255;
         public const string LogPrefix = "[NuclearMeltdown] ";
 
-        // 爆発（クレーター＋範囲建物破壊）の基準半径(Scale 1.0 相当)。実際は Scale 倍される。
-        public const float CraterRadiusBase = 60f;         // クレーター半径
-        public const float CraterDepthBase = 16f;          // クレーター深さ
-        // クレーターの半径/深さに上限は設けない（規模に比例してどこまでも大きくなる）。
-        public const float RemoveRadiusBase = 60f;         // 内側=全破壊半径
-        public const float DestructionRadiusMinBase = 100f; // 破壊減衰の内縁
-        public const float DestructionRadiusMaxBase = 160f; // 破壊減衰の外縁
-        public const float BurnRadiusMaxBase = 200f;       // 延焼の外縁
+        // Baseline radii for the explosion (crater plus area destruction) at scale 1.0.
+        // The actual values are these multiplied by the scale.
+        public const float CraterRadiusBase = 60f;          // crater radius
+        public const float CraterDepthBase = 16f;           // crater depth
+        // The crater radius and depth are deliberately uncapped - they grow with the scale.
+        public const float RemoveRadiusBase = 60f;          // inner radius, everything destroyed
+        public const float DestructionRadiusMinBase = 100f; // inner edge of the destruction falloff
+        public const float DestructionRadiusMaxBase = 160f; // outer edge of the destruction falloff
+        public const float BurnRadiusMaxBase = 200f;        // outer edge of the fires
 
-        // 「原発の出力に応じた災害規模」モードの設定。Scale = 出力 / ReferenceOutput（単純比例）。
-        // 注意: m_electricityProduction は UI の MW 表示そのものではなく内部単位で、
-        // 実測では UI 1280MW のアセットが 80000 を返す（＝MW × 62.5）。よって基準は
-        // バニラ原発 640MW 相当の 40000 とする（＝Scale 1.0）。UI 3200MW 級は 200000 ≒ Scale 5.0。
-        // 上限は設けない（極端な出力でマップが消し飛ぶのは仕様として許容する）。
-        public const int ReferenceOutput = 40000;          // Scale 1.0 の基準出力（バニラ原発 640MW 相当）
-        public const float OutputScaleMin = 0.1f;          // 規模の下限（小出力でも最低限の被害）
-        public const float OutputScaleMax = float.MaxValue; // 上限なし（青天井）
-        // 汚染半径にも上限は設けない（基準700m×Scale がそのまま適用される）。
-        // ただし DisasterHelpers に渡す破壊/延焼半径だけは、マップ全域を十分覆う値で丸める。
-        // マップは約17.3km四方なので、これ以上は走査コストが増えるだけで見た目は変わらない
-        // （マップ消失という結果は同じ。ゲームが固まるのを防ぐための実務上の上限）。
+        // Settings for the "scale from the plant's output" mode. Scale = output / ReferenceOutput,
+        // directly proportional.
+        // Note: m_electricityProduction is NOT the MW figure shown in the UI but an internal
+        // unit - measured, an asset the UI calls 1280 MW reports 80000 (i.e. MW x 62.5). So the
+        // baseline is 40000, the equivalent of the vanilla 640 MW plant (= scale 1.0), and a
+        // 3200 MW class asset reports 200000, about scale 5.0.
+        // There is no upper limit: an extreme output wiping out the map is accepted behaviour.
+        public const int ReferenceOutput = 40000;           // output that means scale 1.0 (vanilla 640 MW)
+        public const float OutputScaleMin = 0.1f;           // floor, so even a tiny plant does something
+        public const float OutputScaleMax = float.MaxValue; // no ceiling
+        // The contamination radius is uncapped too - the 700 m baseline times the scale is used
+        // as-is. Only the destruction and fire radii handed to DisasterHelpers are rounded down
+        // to a value that still covers the whole map. The map is about 17.3 km across, so
+        // anything beyond this only costs scan time without looking any different (the map is
+        // destroyed either way). This is a practical limit to stop the game from freezing.
         public const float EffectRadiusMax = 20000f;
 
         public static void Log(string msg)

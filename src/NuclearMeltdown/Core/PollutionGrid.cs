@@ -3,8 +3,8 @@ using System.Collections.Generic;
 namespace NuclearMeltdown.Core
 {
     /// <summary>
-    /// NaturalResourceManager の汚染グリッド(512x512, セル33.75m)に対する
-    /// Unity非依存の座標計算・半径列挙。
+    /// Coordinate maths and radius enumeration for NaturalResourceManager's pollution grid
+    /// (512x512, 33.75 m cells). No Unity dependency.
     /// </summary>
     public static class PollutionGrid
     {
@@ -25,16 +25,18 @@ namespace NuclearMeltdown.Core
         }
 
         /// <summary>
-        /// 中心(centerX,centerZ)・半径radiusMetersの円内セルを列挙。
-        /// 濃度は中心 maxIntensity、半径端で0への線形減衰（半径外は含めない）。
+        /// Lists the cells inside the circle at (centerX, centerZ) with the given radius.
+        /// Intensity falls off linearly from maxIntensity at the centre to zero at the edge;
+        /// cells outside the radius are not included.
         /// </summary>
         public static List<CellDose> CellsInRadius(float centerX, float centerZ, float radiusMeters, byte maxIntensity)
         {
             var result = new List<CellDose>();
             if (radiusMeters <= 0f) return result;
 
-            // セル半径はグリッド全体(Resolution)を超えて走査しても無意味なので上限を掛ける。
-            // これが無いと巨大半径(超高出力の原発など)で数千万回の空ループになりゲームが固まる。
+            // Scanning further than the whole grid (Resolution) achieves nothing, so the cell
+            // radius is capped. Without this, a huge radius - from a very high output plant,
+            // say - turns into tens of millions of empty iterations and freezes the game.
             long rawCellRadius = (long)(radiusMeters / CellSize) + 1;
             int cellRadius = rawCellRadius > Resolution ? Resolution : (int)rawCellRadius;
             int centerCellX = WorldToCell(centerX);
@@ -49,13 +51,13 @@ namespace NuclearMeltdown.Core
                     int cx = centerCellX + dx;
                     if (cx < 0 || cx > Resolution - 1) continue;
 
-                    // セル中心のワールド距離で判定
+                    // Test against the world distance from cell centre to cell centre.
                     float worldDx = dx * CellSize;
                     float worldDz = dz * CellSize;
                     float dist = (float)System.Math.Sqrt(worldDx * worldDx + worldDz * worldDz);
                     if (dist > radiusMeters) continue;
 
-                    float t = 1f - (dist / radiusMeters); // 中心1..端0
+                    float t = 1f - (dist / radiusMeters); // 1 at the centre .. 0 at the edge
                     if (t < 0f) t = 0f;
                     byte intensity = (byte)(maxIntensity * t);
                     result.Add(new CellDose(CellIndex(cx, cz), intensity));

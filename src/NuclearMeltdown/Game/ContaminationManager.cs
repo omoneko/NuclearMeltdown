@@ -3,7 +3,7 @@ using NuclearMeltdown.Core;
 
 namespace NuclearMeltdown.Game
 {
-    /// <summary>汚染ゾーン台帳と、グリッドへの適用/維持/除去。</summary>
+    /// <summary>The ledger of contamination zones, and applying, holding and clearing them on the grid.</summary>
     public static class ContaminationManager
     {
         private static List<ContaminationZone> _zones = new List<ContaminationZone>();
@@ -30,13 +30,13 @@ namespace NuclearMeltdown.Game
             if (index >= 0 && index < _zones.Count) _zones.RemoveAt(index);
         }
 
-        /// <summary>台帳内のゾーンを差し替える（除染で下げた濃度を書き戻す用）。</summary>
+        /// <summary>Replaces a zone in the ledger, used to store an intensity lowered by decontamination.</summary>
         public static void SetZoneAt(int index, ContaminationZone zone)
         {
             if (index >= 0 && index < _zones.Count) _zones[index] = zone;
         }
 
-        /// <summary>float 濃度を土壌汚染セルの上限濃度(byte)へ丸める。</summary>
+        /// <summary>Rounds the float intensity to the byte a ground pollution cell holds.</summary>
         private static byte ToByteIntensity(float intensity)
         {
             int v = (int)(intensity + 0.5f);
@@ -45,16 +45,20 @@ namespace NuclearMeltdown.Game
             return (byte)v;
         }
 
-        /// <summary>汚染を維持する（自然減衰で下がったセルを zone.Intensity まで引き上げる）。変化があった時だけ再描画。</summary>
+        /// <summary>
+        /// Holds the contamination in place, raising cells the game's natural decay pulled down
+        /// back to zone.Intensity. Redraws only when something actually changed.
+        /// </summary>
         public static void ReassertZone(ContaminationZone zone)
         {
             var doses = PollutionGrid.CellsInRadius(zone.CenterX, zone.CenterZ, zone.Radius, ToByteIntensity(zone.Intensity));
             bool changed = false;
             for (int i = 0; i < doses.Count; i++) changed |= PollutionField.ApplyDose(doses[i]);
-            if (changed) RefreshZoneTexture(zone); // 定常状態(無変化)では再描画しない＝オーバーレイの点滅を防ぐ
+            // Not redrawing in the steady state (nothing changed) is what stops the overlay from flickering.
+            if (changed) RefreshZoneTexture(zone);
         }
 
-        /// <summary>汚染を上書き設定する（除染で下げた濃度を反映）。変化があった時だけ再描画。</summary>
+        /// <summary>Writes the contamination over the grid, to apply an intensity lowered by decontamination. Redraws only on a change.</summary>
         public static void SetZone(ContaminationZone zone)
         {
             var doses = PollutionGrid.CellsInRadius(zone.CenterX, zone.CenterZ, zone.Radius, ToByteIntensity(zone.Intensity));
@@ -73,8 +77,9 @@ namespace NuclearMeltdown.Game
 
         public static void RefreshZoneTexture(ContaminationZone zone)
         {
-            // 巨大半径(超高出力の原発)でも int オーバーフローしないよう long で計算して丸める。
-            // 下の Clamp でグリッド内に収まるため、Resolution を超える値は意味がない。
+            // Computed as a long so a huge radius (a very high output plant) cannot overflow an
+            // int, then rounded down. The Clamp below keeps it inside the grid anyway, so
+            // anything past Resolution is meaningless.
             long rawCellRadius = (long)(zone.Radius / PollutionGrid.CellSize) + 1;
             int cellRadius = rawCellRadius > PollutionGrid.Resolution
                 ? PollutionGrid.Resolution : (int)rawCellRadius;
