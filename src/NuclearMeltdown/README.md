@@ -1,27 +1,40 @@
 # Nuclear Meltdown (Cities: Skylines Mod)
 
-原子力発電所が全焼または崩壊すると、隕石爆発エフェクトと広範囲の疑似放射能汚染（土壌汚染）を発生させる。汚染はゲーム内50年経過、または除染施設（既定: 下水処理施設 Water Treatment Plant）の稼働で消滅する。
+When a nuclear power plant burns down or collapses, it sets off an explosion effect and spreads
+radioactive contamination - modelled as ground pollution - over a wide area. The contamination
+lifts after 50 in-game years, or sooner if a decontamination facility operates nearby.
 
-## 依存
-- Harmony (Mod Dependency) — Steam Workshop の CitiesHarmony を購読しておくこと。
+## Dependencies
+- Harmony (mod dependency) - subscribe to CitiesHarmony on the Steam Workshop.
 
-## ビルドと配置
+## Building and deploying
 ```powershell
 powershell -ExecutionPolicy Bypass -File build.ps1
 ```
-`%LOCALAPPDATA%\Colossal Order\Cities_Skylines\Addons\Mods\NuclearMeltdown\` に配置される。
+The result is deployed to
+`%LOCALAPPDATA%\Colossal Order\Cities_Skylines\Addons\Mods\NuclearMeltdown\`.
 
-## ゲーム内動作確認手順
-1. 起動 → コンテンツマネージャ → Mods で "Nuclear Meltdown" を有効化。
-2. Harmony が有効であること（ログに `[NuclearMeltdown] Harmony patches applied`）。
-3. 原子力発電所を設置し、災害(隕石/竜巻等)または火災で全焼/崩壊させる。
-4. 崩壊地点に爆発エフェクトが出て、周囲約700mが汚染（紫/汚染色）になることを確認。
-5. 汚染ゾーン近傍に下水処理施設を稼働 → 汚染が徐々に消えることを確認。
-6. （時間確認）ゲーム内で50年経過 → 汚染が自動消滅することを確認。
-7. セーブ→ロードで汚染が維持されることを確認。
+## Checking it works in game
+1. Start the game, open the content manager, and enable "Nuclear Meltdown" under Mods.
+2. Confirm Harmony is active - the log should contain
+   `[NuclearMeltdown] Harmony patches applied`.
+3. Build a nuclear power plant and have it burn down or collapse, through a disaster (a meteor,
+   a tornado) or a fire.
+4. Check that an explosion appears where it collapsed and that the area around it becomes
+   contaminated.
+5. Operate a decontamination facility near the contaminated zone and check that the
+   contamination gradually clears. A building whose name contains "Decontamination" counts; a
+   water treatment plant does **not**.
+6. Let 50 in-game years pass and check that the contamination lifts on its own.
+7. Save and reload, and check that the contamination survives.
 
-## 設定
-定数は `Game/ModConfig.cs`（汚染半径・除染猶予年数・除染施設キーワード等）。
+## Settings
+The constants live in `Game/ModConfig.cs`: the contamination radius, how long it lasts, the
+keyword identifying a decontamination facility, and so on.
+The options screen additionally covers how the scale of the disaster is decided (a random draw,
+the plant's power output, or a fixed value) and whether the explosion and the fallout happen at
+all.
 
-## ログ
-`%LOCALAPPDATA%\Colossal Order\Cities_Skylines\` の output_log で `[NuclearMeltdown]` を検索。
+## Logs
+Search the output log in `%LOCALAPPDATA%\Colossal Order\Cities_Skylines\` for
+`[NuclearMeltdown]`.
