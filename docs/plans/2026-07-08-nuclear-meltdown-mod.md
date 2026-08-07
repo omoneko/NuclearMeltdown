@@ -69,7 +69,7 @@
 - Create: `tests/NuclearMeltdown.Core.Tests/SmokeTest.cs`
 
 **Interfaces:**
-- Consumes: なし
+- Consumes: nothing
 - Produces:
   - `struct CellDose { public int Index; public byte Intensity; public CellDose(int index, byte intensity); }`（namespace `NuclearMeltdown.Core`）
   - `struct ContaminationZone { public float CenterX; public float CenterZ; public float Radius; public long StartTicks; public ContaminationZone(float centerX, float centerZ, float radius, long startTicks); }`
@@ -127,7 +127,7 @@ public class SmokeTest
 }
 ```
 
-- [ ] **Step 3: テスト実行して失敗を確認**
+- [ ] **Step 3: run the tests and confirm they fail.**
 
 Run: `dotnet test tests/NuclearMeltdown.Core.Tests`
 Expected: FAIL（`CellDose`/`ContaminationZone` が未定義でコンパイルエラー）
@@ -157,7 +157,7 @@ namespace NuclearMeltdown.Core
 ```csharp
 namespace NuclearMeltdown.Core
 {
-    /// <summary>ワールド座標中心・半径(m)・発生ゲーム内時刻(DateTime.Ticks)の汚染ゾーン。</summary>
+    /// <summary>A contamination zone: world-space centre, radius in metres, and the in-game time it started (DateTime.Ticks).</summary>
     public struct ContaminationZone
     {
         public float CenterX;
@@ -176,12 +176,12 @@ namespace NuclearMeltdown.Core
 }
 ```
 
-- [ ] **Step 5: テスト実行して成功を確認**
+- [ ] **Step 5: run the tests and confirm they pass.**
 
 Run: `dotnet test tests/NuclearMeltdown.Core.Tests`
 Expected: PASS（2件）
 
-- [ ] **Step 6: コミット**
+- [ ] **Step 6: commit.**
 
 ```bash
 git add src/NuclearMeltdown/Core tests/NuclearMeltdown.Core.Tests
@@ -205,7 +205,7 @@ git commit -m "feat: Coreデータ型 CellDose/ContaminationZone とテスト基
   - `int CellIndex(int cellX, int cellZ)` → `cellZ * 512 + cellX`
   - `System.Collections.Generic.List<CellDose> CellsInRadius(float centerX, float centerZ, float radiusMeters, byte maxIntensity)` — 中心 `maxIntensity`、外周0への線形減衰。半径外は含めない。各要素は一意のindex。
 
-- [ ] **Step 1: 失敗するテストを書く**
+- [ ] **Step 1: write the failing tests.**
 
 `tests/NuclearMeltdown.Core.Tests/PollutionGridTests.cs`:
 ```csharp
@@ -267,7 +267,7 @@ public class PollutionGridTests
 }
 ```
 
-- [ ] **Step 2: テスト実行して失敗を確認**
+- [ ] **Step 2: run the tests and confirm they fail.**
 
 Run: `dotnet test tests/NuclearMeltdown.Core.Tests`
 Expected: FAIL（`PollutionGrid` 未定義）
@@ -342,12 +342,12 @@ namespace NuclearMeltdown.Core
 }
 ```
 
-- [ ] **Step 4: テスト実行して成功を確認**
+- [ ] **Step 4: run the tests and confirm they pass.**
 
 Run: `dotnet test tests/NuclearMeltdown.Core.Tests`
-Expected: PASS（全件）
+Expected: PASS (all of them)
 
-- [ ] **Step 5: コミット**
+- [ ] **Step 5: commit.**
 
 ```bash
 git add src/NuclearMeltdown/Core/PollutionGrid.cs tests/NuclearMeltdown.Core.Tests/PollutionGridTests.cs
@@ -363,11 +363,11 @@ git commit -m "feat: PollutionGrid 座標変換と半径セル列挙を追加"
 - Test: `tests/NuclearMeltdown.Core.Tests/MeltdownClockTests.cs`
 
 **Interfaces:**
-- Consumes: なし
+- Consumes: nothing
 - Produces（`static class MeltdownClock`, namespace `NuclearMeltdown.Core`）:
   - `bool HasExpired(long startTicks, long nowTicks, int years)` — `now >= start.AddYears(years)` を DateTime で計算。
 
-- [ ] **Step 1: 失敗するテストを書く**
+- [ ] **Step 1: write the failing tests.**
 
 `tests/NuclearMeltdown.Core.Tests/MeltdownClockTests.cs`:
 ```csharp
@@ -403,7 +403,7 @@ public class MeltdownClockTests
 }
 ```
 
-- [ ] **Step 2: テスト実行して失敗を確認**
+- [ ] **Step 2: run the tests and confirm they fail.**
 
 Run: `dotnet test tests/NuclearMeltdown.Core.Tests`
 Expected: FAIL（`MeltdownClock` 未定義）
@@ -416,7 +416,7 @@ using System;
 
 namespace NuclearMeltdown.Core
 {
-    /// <summary>汚染ゾーンの時間経過による消滅判定（ゲーム内時刻ベース）。</summary>
+    /// <summary>Decides when a contamination zone has aged out, based on in-game time.</summary>
     public static class MeltdownClock
     {
         public static bool HasExpired(long startTicks, long nowTicks, int years)
@@ -429,12 +429,12 @@ namespace NuclearMeltdown.Core
 }
 ```
 
-- [ ] **Step 4: テスト実行して成功を確認**
+- [ ] **Step 4: run the tests and confirm they pass.**
 
 Run: `dotnet test tests/NuclearMeltdown.Core.Tests`
-Expected: PASS（全件）
+Expected: PASS (all of them)
 
-- [ ] **Step 5: コミット**
+- [ ] **Step 5: commit.**
 
 ```bash
 git add src/NuclearMeltdown/Core/MeltdownClock.cs tests/NuclearMeltdown.Core.Tests/MeltdownClockTests.cs
@@ -450,13 +450,13 @@ git commit -m "feat: MeltdownClock 50年経過判定を追加"
 - Test: `tests/NuclearMeltdown.Core.Tests/ZoneSerializerTests.cs`
 
 **Interfaces:**
-- Consumes: `ContaminationZone`（Task 1）
+- Consumes `ContaminationZone` from Task 1
 - Produces（`static class ZoneSerializer`, namespace `NuclearMeltdown.Core`）:
   - `const byte Version = 1;`
   - `byte[] Serialize(List<ContaminationZone> zones)` — 先頭にVersion(byte)、次にcount(int)、各ゾーンに CenterX,CenterZ,Radius(float×3)+StartTicks(long)。`BinaryWriter`使用。
   - `List<ContaminationZone> Deserialize(byte[] data)` — null/空/未知Version/破損時は空リストを返す（例外を投げない）。
 
-- [ ] **Step 1: 失敗するテストを書く**
+- [ ] **Step 1: write the failing tests.**
 
 `tests/NuclearMeltdown.Core.Tests/ZoneSerializerTests.cs`:
 ```csharp
@@ -506,10 +506,10 @@ public class ZoneSerializerTests
 }
 ```
 
-- [ ] **Step 2: テスト実行して失敗を確認**
+- [ ] **Step 2: run the tests and confirm they fail.**
 
 Run: `dotnet test tests/NuclearMeltdown.Core.Tests`
-Expected: FAIL（`ZoneSerializer` 未定義）
+Expected: FAIL, `ZoneSerializer` is not defined yet
 
 - [ ] **Step 3: ZoneSerializerを実装**
 
@@ -577,12 +577,12 @@ namespace NuclearMeltdown.Core
 }
 ```
 
-- [ ] **Step 4: テスト実行して成功を確認**
+- [ ] **Step 4: run the tests and confirm they pass.**
 
 Run: `dotnet test tests/NuclearMeltdown.Core.Tests`
-Expected: PASS（全件）
+Expected: PASS (all of them)
 
-- [ ] **Step 5: コミット**
+- [ ] **Step 5: commit.**
 
 ```bash
 git add src/NuclearMeltdown/Core/ZoneSerializer.cs tests/NuclearMeltdown.Core.Tests/ZoneSerializerTests.cs
@@ -603,7 +603,7 @@ git commit -m "feat: ZoneSerializer ゾーン台帳の直列化/復元を追加"
 - Create: `NuclearMeltdown.sln`
 
 **Interfaces:**
-- Consumes: なし（Core型は後続タスクで参照）
+- Consumes: nothing（Core型は後続タスクで参照）
 - Produces:
   - `static class ModConfig`: `const string HarmonyId = "com.omone.nuclearmeltdown";`, `const float DefaultRadiusMeters = 700f;`, `const int ExpiryYears = 50;`, `const string DecontaminationNameKeyword = "Water Treatment";`, `const string NuclearNameKeyword = "Nuclear";`, `const byte MaxPollution = 255;`, `const string LogPrefix = "[NuclearMeltdown] ";`, `static void Log(string msg)`。
   - `class Mod : IUserMod`: `string Name { get; }`, `string Description { get; }`。
@@ -683,7 +683,7 @@ using UnityEngine;
 
 namespace NuclearMeltdown.Game
 {
-    /// <summary>Mod全体の定数と共通ログ。</summary>
+    /// <summary>Mod-wide constants and shared logging.</summary>
     public static class ModConfig
     {
         public const string HarmonyId = "com.omone.nuclearmeltdown";
@@ -718,7 +718,7 @@ namespace NuclearMeltdown.Game
     public class Mod : IUserMod
     {
         public string Name => "Nuclear Meltdown";
-        public string Description => "原子力発電所の全焼/崩壊時に爆発と広範囲の放射能汚染（土壌汚染）を発生させます。汚染はゲーム内50年経過または除染施設で消滅します。";
+        public string Description => "When a nuclear power plant burns down or collapses, sets off an explosion and spreads radioactive contamination over a wide area. The contamination lifts after 50 in-game years, or sooner with a decontamination facility.";
 
         public void OnEnabled()
         {
@@ -745,7 +745,7 @@ namespace NuclearMeltdown.Game
     public class Mod : IUserMod
     {
         public string Name => "Nuclear Meltdown";
-        public string Description => "原子力発電所の全焼/崩壊時に爆発と広範囲の放射能汚染（土壌汚染）を発生させます。汚染はゲーム内50年経過または除染施設で消滅します。";
+        public string Description => "When a nuclear power plant burns down or collapses, sets off an explosion and spreads radioactive contamination over a wide area. The contamination lifts after 50 in-game years, or sooner with a decontamination facility.";
 
         public void OnEnabled()
         {
@@ -783,10 +783,10 @@ EndGlobal
 $ErrorActionPreference = "Stop"
 $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
 $msbuild = & $vswhere -latest -requires Microsoft.Component.MSBuild -find MSBuild\**\Bin\MSBuild.exe | Select-Object -First 1
-if (-not $msbuild) { throw "MSBuild が見つかりません" }
+if (-not $msbuild) { throw "MSBuild not found" }
 
 & $msbuild "src\NuclearMeltdown\NuclearMeltdown.csproj" /t:Restore,Build /p:Configuration=Release /v:minimal
-if ($LASTEXITCODE -ne 0) { throw "ビルド失敗" }
+if ($LASTEXITCODE -ne 0) { throw "Build failed" }
 
 $dll = "src\NuclearMeltdown\bin\Release\NuclearMeltdown.dll"
 $modDir = Join-Path $env:LOCALAPPDATA "Colossal Order\Cities_Skylines\Addons\Mods\NuclearMeltdown"
@@ -794,7 +794,7 @@ New-Item -ItemType Directory -Force -Path $modDir | Out-Null
 Copy-Item $dll $modDir -Force
 $apiDll = "src\NuclearMeltdown\bin\Release\CitiesHarmony.API.dll"
 if (Test-Path $apiDll) { Copy-Item $apiDll $modDir -Force }
-Write-Host "配置完了: $modDir"
+Write-Host "Deploy complete: $modDir"
 ```
 
 - [ ] **Step 5: ビルド検証（コンパイル成功）**
@@ -802,7 +802,7 @@ Write-Host "配置完了: $modDir"
 Run: `powershell -ExecutionPolicy Bypass -File build.ps1`
 Expected: `ビルド成功` → `NuclearMeltdown.dll` が生成され Modフォルダへコピーされる。エラーが出た場合は参照パス/PackageReference restore を修正してから次へ。
 
-- [ ] **Step 6: コミット**
+- [ ] **Step 6: commit.**
 
 ```bash
 git add src/NuclearMeltdown/NuclearMeltdown.csproj src/NuclearMeltdown/Properties src/NuclearMeltdown/Game/ModConfig.cs src/NuclearMeltdown/Game/Mod.cs NuclearMeltdown.sln build.ps1
@@ -943,7 +943,7 @@ namespace NuclearMeltdown.Game
     public class Mod : IUserMod
     {
         public string Name => "Nuclear Meltdown";
-        public string Description => "原子力発電所の全焼/崩壊時に爆発と広範囲の放射能汚染（土壌汚染）を発生させます。汚染はゲーム内50年経過または除染施設で消滅します。";
+        public string Description => "When a nuclear power plant burns down or collapses, sets off an explosion and spreads radioactive contamination over a wide area. The contamination lifts after 50 in-game years, or sooner with a decontamination facility.";
 
         public void OnEnabled()
         {
@@ -964,9 +964,9 @@ namespace NuclearMeltdown.Game
 - [ ] **Step 5: ビルド検証**
 
 Run: `powershell -ExecutionPolicy Bypass -File build.ps1`
-Expected: ビルド成功。`CommonBuildingAI`/`Building.Flags`/`HarmonyLib` の解決を確認（HarmonyLib は CitiesHarmony.API の依存で restore 済み）。
+Expected: the build succeeds.`CommonBuildingAI`/`Building.Flags`/`HarmonyLib` の解決を確認（HarmonyLib は CitiesHarmony.API の依存で restore 済み）。
 
-- [ ] **Step 6: コミット**
+- [ ] **Step 6: commit.**
 
 ```bash
 git add src/NuclearMeltdown/Game/NuclearDetector.cs src/NuclearMeltdown/Game/Patcher.cs src/NuclearMeltdown/Game/Patches/CollapseBuildingPatch.cs src/NuclearMeltdown/Game/Mod.cs
@@ -1123,12 +1123,12 @@ namespace NuclearMeltdown.Game
 ```
 注: `NaturalResourceManager` はグローバル名前空間。
 
-- [ ] **Step 3: ビルド検証**
+- [ ] **Step 3: verify the build.**
 
 Run: `powershell -ExecutionPolicy Bypass -File build.ps1`
-Expected: ビルド成功。
+Expected: the build succeeds.
 
-- [ ] **Step 4: コミット**
+- [ ] **Step 4: commit.**
 
 ```bash
 git add src/NuclearMeltdown/Game/PollutionField.cs src/NuclearMeltdown/Game/ContaminationManager.cs
@@ -1229,9 +1229,9 @@ Expected: `m_disasterAI` のフィールド名を確認。異なる場合は Ste
 - [ ] **Step 4: ビルド検証**
 
 Run: `powershell -ExecutionPolicy Bypass -File build.ps1`
-Expected: ビルド成功。
+Expected: the build succeeds.
 
-- [ ] **Step 5: コミット**
+- [ ] **Step 5: commit.**
 
 ```bash
 git add src/NuclearMeltdown/Game/MeltdownEffect.cs src/NuclearMeltdown/Game/Patches/CollapseBuildingPatch.cs
@@ -1397,9 +1397,9 @@ Expected: グリッド解像度270・セル64m・`m_nextGridBuilding` を確認�
 - [ ] **Step 4: ビルド検証**
 
 Run: `powershell -ExecutionPolicy Bypass -File build.ps1`
-Expected: ビルド成功。
+Expected: the build succeeds.
 
-- [ ] **Step 5: コミット**
+- [ ] **Step 5: commit.**
 
 ```bash
 git add src/NuclearMeltdown/Game/Simulation/MeltdownThreadingExtension.cs src/NuclearMeltdown/Game/ContaminationManager.cs
@@ -1467,12 +1467,12 @@ namespace NuclearMeltdown.Game.Serialization
 ```
 注: `serializableDataManager` は `SerializableDataExtensionBase` の保護プロパティ（型 `ISerializableData`）。
 
-- [ ] **Step 2: ビルド検証**
+- [ ] **Step 2: verify the build.**
 
 Run: `powershell -ExecutionPolicy Bypass -File build.ps1`
-Expected: ビルド成功。
+Expected: the build succeeds.
 
-- [ ] **Step 3: コミット**
+- [ ] **Step 3: commit.**
 
 ```bash
 git add src/NuclearMeltdown/Game/Serialization/ContaminationDataExtension.cs
@@ -1487,7 +1487,7 @@ git commit -m "feat: 汚染ゾーンのセーブ/ロード永続化を追加"
 - Create: `src/NuclearMeltdown/README.md`
 
 **Interfaces:**
-- Consumes: なし
+- Consumes: nothing
 - Produces: なし（ドキュメント）
 
 - [ ] **Step 1: README を作成**
@@ -1523,7 +1523,7 @@ powershell -ExecutionPolicy Bypass -File build.ps1
 `%LOCALAPPDATA%\Colossal Order\Cities_Skylines\` の output_log で `[NuclearMeltdown]` を検索。
 ```
 
-- [ ] **Step 2: コミット**
+- [ ] **Step 2: commit.**
 
 ```bash
 git add src/NuclearMeltdown/README.md
