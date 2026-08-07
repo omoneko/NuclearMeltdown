@@ -2,65 +2,65 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Cities: Skylines（初代）で原子力発電所が全焼/崩壊した際に、隕石爆発エフェクトと広範囲の疑似放射能汚染（土壌汚染）を発生させ、汚染はゲーム内50年経過または除染施設稼働まで維持されるシステムModを作る。
+**Goal:** a system mod for Cities: Skylines (2015) where a nuclear power plant burning down or collapsing sets off a meteor-style explosion and spreads wide-area radioactive contamination, modelled as ground pollution, which is held in place until 50 in-game years pass or a decontamination facility clears it.
 
-**Architecture:** Unity/ゲーム型に依存しない純粋ロジック（座標変換・半径セル列挙・50年判定・ゾーンのバイナリ直列化）を `Core/` に分離してxUnitで実TDD。ゲーム統合層（Harmonyパッチ、エフェクト、汚染書込、拡張点）は薄く保ち、`Core` を呼び出す。汚染はCSの自然減衰があるため `ThreadingExtension` の毎tickで再アサートし、期限/除染で解除する。
+**Architecture:** the pure logic - coordinate conversion, enumerating the cells in a radius, the 50-year test and serialising the zones - is separated into `Core/`, free of Unity and the game's types, and driven test-first with xUnit. The game integration layer - the Harmony patch, the effects, writing the pollution and the extension points - stays thin and calls into `Core`. Because CS decays pollution on its own, the contamination is reasserted every tick from a `ThreadingExtension` and released only on expiry or decontamination.
 
-**Tech Stack:** C# / .NET Framework 3.5（Mod本体, MSBuildでビルド）, CitiesHarmony.API (Harmony 2.0), ICities/Assembly-CSharp/UnityEngine/ColossalManaged。テストは .NET 8 + xUnit（Coreソースをリンク参照）。
+**Tech stack:** C# on .NET Framework 3.5 for the mod itself, built with MSBuild, plus CitiesHarmony.API (Harmony 2.0) and the ICities, Assembly-CSharp, UnityEngine and ColossalManaged references. The tests run on .NET 8 with xUnit, linking the Core sources directly.
 
 ## Global Constraints
 
-- 対象FW（Mod本体）: **.NET Framework 3.5**。`ValueTuple`/名前付きタプル・`Span`・LINQ以降の新API等の net35 非対応機能を `Core` で使用しない（`Core` は net35 と net8 の両方でコンパイルされる）。
-- ゲームDLL参照元: `C:\Program Files (x86)\Steam\steamapps\common\Cities_Skylines\Cities_Data\Managed\`（`ICities.dll`, `Assembly-CSharp.dll`, `UnityEngine.dll`, `ColossalManaged.dll`）。参照は `Private=False`（Copy Local=false）。
-- Harmony: NuGet `CitiesHarmony.API`。パッチは `HarmonyHelper.DoOnHarmonyReady` / `IsHarmonyInstalled` 経由で適用/解除。ハーモニーID: `"com.omone.nuclearmeltdown"`。
-- デプロイ先: `%LOCALAPPDATA%\Colossal Order\Cities_Skylines\Addons\Mods\NuclearMeltdown\`。
-- ログは `UnityEngine.Debug.Log` に接頭辞 `"[NuclearMeltdown] "` を付けてのみ出力（`Console.WriteLine`/`print` 禁止）。
-- 全パッチ・tick・直列化処理は try/catch で保護し、例外をゲーム本体へ伝播させない。
-- 汚染グリッド定数（Assembly-CSharp 実測値）: `CELL_SIZE = 33.75f`, `RESOLUTION = 512`, セル変換 `cell = Clamp((int)(world / 33.75f + 256f), 0, 511)`, `index = cellZ * 512 + cellX`, `m_pollution` は byte(0–255)。
-- 除染施設デフォルト判定: Prefab名に `"Water Treatment"` を含む建物（設定定数 `DecontaminationNameKeyword` として一箇所に定義）。
-- 汚染半径デフォルト: 中心最大濃度、外周 `700m` へ線形減衰（`DefaultRadiusMeters = 700f`）。
-- 除染猶予: ゲーム内 `50` 年（`ExpiryYears = 50`）。
+- The mod targets **.NET Framework 3.5**. `Core` must avoid anything net35 does not have - `ValueTuple` and named tuples, `Span`, APIs newer than LINQ - because `Core` is compiled for both net35 and net8.
+- The game DLLs come from `Cities_Data\Managed\` in the game's installation: `ICities.dll`, `Assembly-CSharp.dll`, `UnityEngine.dll` and `ColossalManaged.dll`, referenced with `Private=False` so they are not copied locally.
+- Harmony comes from the `CitiesHarmony.API` NuGet package, and the patches are applied and removed through `HarmonyHelper.DoOnHarmonyReady` and `IsHarmonyInstalled`. The Harmony ID is `"com.omone.nuclearmeltdown"`.
+- It deploys to `%LOCALAPPDATA%\Colossal Order\Cities_Skylines\Addons\Mods\NuclearMeltdown\`.
+- Logging goes through `UnityEngine.Debug.Log` with the `"[NuclearMeltdown] "` prefix and nowhere else; no `Console.WriteLine` or `print`.
+- Every patch, tick and serialisation path is wrapped in try/catch, so no exception propagates into the game.
+- The pollution grid constants, measured against Assembly-CSharp: `CELL_SIZE = 33.75f`, `RESOLUTION = 512`, the cell conversion `cell = Clamp((int)(world / 33.75f + 256f), 0, 511)`, `index = cellZ * 512 + cellX`, and `m_pollution` as a byte from 0 to 255.
+- A decontamination facility is by default any building whose prefab name contains `"Water Treatment"`, defined in one place as the constant `DecontaminationNameKeyword`.
+- The contamination radius defaults to maximum intensity at the centre falling off linearly to `700m`, as `DefaultRadiusMeters = 700f`.
+- The contamination lasts `50` in-game years, as `ExpiryYears = 50`.
 
 ---
 
 ## File Structure
 
 ```
-原子力発電所プロジェクト/
+<repository root>/
 ├─ NuclearMeltdown.sln
-├─ build.ps1                                  # MSBuild実行 + Modフォルダへ配置
+├─ build.ps1                                  # runs MSBuild and deploys into the mod folder
 ├─ src/NuclearMeltdown/
-│  ├─ NuclearMeltdown.csproj                  # net35, 旧形式, PackageReference:CitiesHarmony.API
+│  ├─ NuclearMeltdown.csproj                  # net35, old-style, PackageReference: CitiesHarmony.API
 │  ├─ Properties/AssemblyInfo.cs
-│  ├─ Core/                                    # Unity非依存・テスト対象
+│  ├─ Core/                                    # no Unity dependency; this is what the tests cover
 │  │   ├─ CellDose.cs                          # struct { int Index; byte Intensity; }
-│  │   ├─ PollutionGrid.cs                     # 座標変換 + 半径セル列挙
-│  │   ├─ MeltdownClock.cs                     # 50年経過判定
-│  │   ├─ ContaminationZone.cs                 # struct ゾーンデータ
-│  │   └─ ZoneSerializer.cs                    # byte[] 直列化/復元（versioned）
+│  │   ├─ PollutionGrid.cs                     # coordinate conversion and enumerating the cells in a radius
+│  │   ├─ MeltdownClock.cs                     # the 50-year expiry test
+│  │   ├─ ContaminationZone.cs                 # the zone data, as a struct
+│  │   └─ ZoneSerializer.cs                    # serialises to and from byte[], versioned
 │  ├─ Game/
 │  │   ├─ Mod.cs                               # IUserMod + Harmony bootstrap
-│  │   ├─ ModConfig.cs                         # 定数（半径/年数/キーワード/HarmonyID）
+│  │   ├─ ModConfig.cs                         # the constants: radius, years, keywords, Harmony ID
 │  │   ├─ NuclearDetector.cs                   # IsNuclearPlant(ushort)
-│  │   ├─ PollutionField.cs                    # NaturalResourceManagerへの読み書き
-│  │   ├─ ContaminationManager.cs              # ゾーン台帳 + 適用/維持/除去
-│  │   ├─ MeltdownEffect.cs                    # 爆発エフェクト + 初回発災
+│  │   ├─ PollutionField.cs                    # reads and writes NaturalResourceManager
+│  │   ├─ ContaminationManager.cs              # the zone ledger, and applying, holding and clearing it
+│  │   ├─ MeltdownEffect.cs                    # the explosion effect and the initial contamination
 │  │   ├─ Patches/CollapseBuildingPatch.cs     # Harmony Prefix/Postfix
 │  │   ├─ Simulation/MeltdownThreadingExtension.cs
 │  │   └─ Serialization/ContaminationDataExtension.cs
 │  └─ README.md
 └─ tests/NuclearMeltdown.Core.Tests/
-   ├─ NuclearMeltdown.Core.Tests.csproj        # net8, xUnit, Coreソースをlink参照
+   ├─ NuclearMeltdown.Core.Tests.csproj        # net8, xUnit, linking the Core sources
    ├─ PollutionGridTests.cs
    ├─ MeltdownClockTests.cs
    └─ ZoneSerializerTests.cs
 ```
 
-**依存の向き:** `Game/*` → `Core/*`（一方向）。`Core/*` は他に依存しない。テストは `Core/*` のみ。
+**Dependencies point one way:** `Game/*` depends on `Core/*`, `Core/*` depends on nothing else, and the tests cover `Core/*` alone.
 
 ---
 
-## Task 1: ソリューション骨組みとCoreデータ型（CellDose / ContaminationZone）
+## Task 1: the solution skeleton and the Core data types (CellDose and ContaminationZone)
 
 **Files:**
 - Create: `src/NuclearMeltdown/Core/CellDose.cs`
@@ -71,10 +71,10 @@
 **Interfaces:**
 - Consumes: nothing
 - Produces:
-  - `struct CellDose { public int Index; public byte Intensity; public CellDose(int index, byte intensity); }`（namespace `NuclearMeltdown.Core`）
+  - `struct CellDose { public int Index; public byte Intensity; public CellDose(int index, byte intensity); }` in the `NuclearMeltdown.Core` namespace
   - `struct ContaminationZone { public float CenterX; public float CenterZ; public float Radius; public long StartTicks; public ContaminationZone(float centerX, float centerZ, float radius, long startTicks); }`
 
-- [ ] **Step 1: テストプロジェクトを作成（Coreソースをリンク参照）**
+- [ ] **Step 1: create the test project, linking the Core sources.**
 
 `tests/NuclearMeltdown.Core.Tests/NuclearMeltdown.Core.Tests.csproj`:
 ```xml
@@ -86,7 +86,7 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
-    <!-- Coreの実ソースを直接コンパイルしてテスト（別ビルド不要） -->
+    <!-- Compile the real Core sources straight into the test assembly, so no separate build is needed -->
     <Compile Include="..\..\src\NuclearMeltdown\Core\**\*.cs" LinkBase="Core" />
   </ItemGroup>
   <ItemGroup>
@@ -96,9 +96,9 @@
   </ItemGroup>
 </Project>
 ```
-注: `LangVersion=7.3` は net35 と互換の言語機能に制約するための保険（ValueTuple等の混入をレビューで気づきやすくする。7.3自体はValueTupleを許すが、net35側ビルドで検出される）。
+Note that `LangVersion=7.3` is a safeguard, keeping the language features close to what net35 supports and making something like a stray ValueTuple easier to spot in review. 7.3 does allow ValueTuple, but the net35 build catches it.
 
-- [ ] **Step 2: 失敗するスモークテストを書く**
+- [ ] **Step 2: write a failing smoke test.**
 
 `tests/NuclearMeltdown.Core.Tests/SmokeTest.cs`:
 ```csharp
@@ -130,15 +130,15 @@ public class SmokeTest
 - [ ] **Step 3: run the tests and confirm they fail.**
 
 Run: `dotnet test tests/NuclearMeltdown.Core.Tests`
-Expected: FAIL（`CellDose`/`ContaminationZone` が未定義でコンパイルエラー）
+Expected: FAIL with a compile error, since `CellDose` and `ContaminationZone` do not exist yet
 
-- [ ] **Step 4: Coreデータ型を実装**
+- [ ] **Step 4: implement the Core data types.**
 
 `src/NuclearMeltdown/Core/CellDose.cs`:
 ```csharp
 namespace NuclearMeltdown.Core
 {
-    /// <summary>汚染を適用する単一セル（グリッドindex）とその濃度(0-255)。</summary>
+    /// <summary>One grid cell (by index) to contaminate, and the intensity to apply (0-255).</summary>
     public struct CellDose
     {
         public int Index;
@@ -179,31 +179,31 @@ namespace NuclearMeltdown.Core
 - [ ] **Step 5: run the tests and confirm they pass.**
 
 Run: `dotnet test tests/NuclearMeltdown.Core.Tests`
-Expected: PASS（2件）
+Expected: PASS (2 tests)
 
 - [ ] **Step 6: commit.**
 
 ```bash
 git add src/NuclearMeltdown/Core tests/NuclearMeltdown.Core.Tests
-git commit -m "feat: Coreデータ型 CellDose/ContaminationZone とテスト基盤を追加"
+git commit -m "feat: add the Core data types CellDose and ContaminationZone, plus the test scaffolding"
 ```
 
 ---
 
-## Task 2: PollutionGrid（座標変換と半径セル列挙）
+## Task 2: PollutionGrid (coordinate conversion and enumerating the cells in a radius)
 
 **Files:**
 - Create: `src/NuclearMeltdown/Core/PollutionGrid.cs`
 - Test: `tests/NuclearMeltdown.Core.Tests/PollutionGridTests.cs`
 
 **Interfaces:**
-- Consumes: `CellDose`（Task 1）
-- Produces（すべて `static class PollutionGrid`, namespace `NuclearMeltdown.Core`）:
+- Consumes `CellDose` from Task 1
+- Produces, all on `static class PollutionGrid` in the `NuclearMeltdown.Core` namespace:
   - `const float CellSize = 33.75f;`
   - `const int Resolution = 512;`
   - `int WorldToCell(float world)` → `Clamp((int)(world / 33.75f + 256f), 0, 511)`
   - `int CellIndex(int cellX, int cellZ)` → `cellZ * 512 + cellX`
-  - `System.Collections.Generic.List<CellDose> CellsInRadius(float centerX, float centerZ, float radiusMeters, byte maxIntensity)` — 中心 `maxIntensity`、外周0への線形減衰。半径外は含めない。各要素は一意のindex。
+  - `System.Collections.Generic.List<CellDose> CellsInRadius(float centerX, float centerZ, float radiusMeters, byte maxIntensity)` - `maxIntensity` at the centre falling off linearly to zero at the edge, excluding anything outside the radius, with a unique index per element.
 
 - [ ] **Step 1: write the failing tests.**
 
@@ -246,7 +246,7 @@ public class PollutionGridTests
     [Fact]
     public void CellsInRadius_excludes_cells_outside_radius()
     {
-        // 半径 1セル(33.75m)未満 → 実質中心セルのみ
+        // A radius under one cell (33.75 m) means effectively just the centre cell.
         var cells = PollutionGrid.CellsInRadius(0f, 0f, 10f, 255);
         Assert.All(cells, c =>
         {
@@ -270,9 +270,9 @@ public class PollutionGridTests
 - [ ] **Step 2: run the tests and confirm they fail.**
 
 Run: `dotnet test tests/NuclearMeltdown.Core.Tests`
-Expected: FAIL（`PollutionGrid` 未定義）
+Expected: FAIL, `PollutionGrid` is not defined yet
 
-- [ ] **Step 3: PollutionGridを実装**
+- [ ] **Step 3: implement PollutionGrid.**
 
 `src/NuclearMeltdown/Core/PollutionGrid.cs`:
 ```csharp
@@ -281,8 +281,8 @@ using System.Collections.Generic;
 namespace NuclearMeltdown.Core
 {
     /// <summary>
-    /// NaturalResourceManager の汚染グリッド(512x512, セル33.75m)に対する
-    /// Unity非依存の座標計算・半径列挙。
+    /// Coordinate maths and radius enumeration for NaturalResourceManager's pollution grid
+    /// (512x512, 33.75 m cells). No Unity dependency.
     /// </summary>
     public static class PollutionGrid
     {
@@ -303,8 +303,9 @@ namespace NuclearMeltdown.Core
         }
 
         /// <summary>
-        /// 中心(centerX,centerZ)・半径radiusMetersの円内セルを列挙。
-        /// 濃度は中心 maxIntensity、半径端で0への線形減衰（半径外は含めない）。
+        /// Lists the cells inside the circle at (centerX, centerZ) with the given radius.
+        /// Intensity falls off linearly from maxIntensity at the centre to zero at the edge;
+        /// cells outside the radius are not included.
         /// </summary>
         public static List<CellDose> CellsInRadius(float centerX, float centerZ, float radiusMeters, byte maxIntensity)
         {
@@ -324,13 +325,13 @@ namespace NuclearMeltdown.Core
                     int cx = centerCellX + dx;
                     if (cx < 0 || cx > Resolution - 1) continue;
 
-                    // セル中心のワールド距離で判定
+                    // Test against the world distance from cell centre to cell centre.
                     float worldDx = dx * CellSize;
                     float worldDz = dz * CellSize;
                     float dist = (float)System.Math.Sqrt(worldDx * worldDx + worldDz * worldDz);
                     if (dist > radiusMeters) continue;
 
-                    float t = 1f - (dist / radiusMeters); // 中心1..端0
+                    float t = 1f - (dist / radiusMeters); // 1 at the centre .. 0 at the edge
                     if (t < 0f) t = 0f;
                     byte intensity = (byte)(maxIntensity * t);
                     result.Add(new CellDose(CellIndex(cx, cz), intensity));
@@ -351,12 +352,12 @@ Expected: PASS (all of them)
 
 ```bash
 git add src/NuclearMeltdown/Core/PollutionGrid.cs tests/NuclearMeltdown.Core.Tests/PollutionGridTests.cs
-git commit -m "feat: PollutionGrid 座標変換と半径セル列挙を追加"
+git commit -m "feat: add PollutionGrid, the coordinate conversion and radius enumeration"
 ```
 
 ---
 
-## Task 3: MeltdownClock（50年経過判定）
+## Task 3: MeltdownClock (the 50-year expiry test)
 
 **Files:**
 - Create: `src/NuclearMeltdown/Core/MeltdownClock.cs`
@@ -364,8 +365,8 @@ git commit -m "feat: PollutionGrid 座標変換と半径セル列挙を追加"
 
 **Interfaces:**
 - Consumes: nothing
-- Produces（`static class MeltdownClock`, namespace `NuclearMeltdown.Core`）:
-  - `bool HasExpired(long startTicks, long nowTicks, int years)` — `now >= start.AddYears(years)` を DateTime で計算。
+- Produces, on `static class MeltdownClock` in the `NuclearMeltdown.Core` namespace:
+  - `bool HasExpired(long startTicks, long nowTicks, int years)` - computes `now >= start.AddYears(years)` through DateTime.
 
 - [ ] **Step 1: write the failing tests.**
 
@@ -406,9 +407,9 @@ public class MeltdownClockTests
 - [ ] **Step 2: run the tests and confirm they fail.**
 
 Run: `dotnet test tests/NuclearMeltdown.Core.Tests`
-Expected: FAIL（`MeltdownClock` 未定義）
+Expected: FAIL, `MeltdownClock` is not defined yet
 
-- [ ] **Step 3: MeltdownClockを実装**
+- [ ] **Step 3: implement MeltdownClock.**
 
 `src/NuclearMeltdown/Core/MeltdownClock.cs`:
 ```csharp
@@ -438,12 +439,12 @@ Expected: PASS (all of them)
 
 ```bash
 git add src/NuclearMeltdown/Core/MeltdownClock.cs tests/NuclearMeltdown.Core.Tests/MeltdownClockTests.cs
-git commit -m "feat: MeltdownClock 50年経過判定を追加"
+git commit -m "feat: add MeltdownClock, the 50-year expiry test"
 ```
 
 ---
 
-## Task 4: ZoneSerializer（ゾーン台帳のバイナリ直列化）
+## Task 4: ZoneSerializer (serialising the zone ledger to binary)
 
 **Files:**
 - Create: `src/NuclearMeltdown/Core/ZoneSerializer.cs`
@@ -451,10 +452,10 @@ git commit -m "feat: MeltdownClock 50年経過判定を追加"
 
 **Interfaces:**
 - Consumes `ContaminationZone` from Task 1
-- Produces（`static class ZoneSerializer`, namespace `NuclearMeltdown.Core`）:
+- Produces, on `static class ZoneSerializer` in the `NuclearMeltdown.Core` namespace:
   - `const byte Version = 1;`
-  - `byte[] Serialize(List<ContaminationZone> zones)` — 先頭にVersion(byte)、次にcount(int)、各ゾーンに CenterX,CenterZ,Radius(float×3)+StartTicks(long)。`BinaryWriter`使用。
-  - `List<ContaminationZone> Deserialize(byte[] data)` — null/空/未知Version/破損時は空リストを返す（例外を投げない）。
+  - `byte[] Serialize(List<ContaminationZone> zones)` - a version byte first, then the count as an int, then CenterX, CenterZ and Radius as three floats plus StartTicks as a long per zone, written with `BinaryWriter`.
+  - `List<ContaminationZone> Deserialize(byte[] data)` - returns an empty list for null, empty, an unknown version or corrupt data, and never throws.
 
 - [ ] **Step 1: write the failing tests.**
 
@@ -501,7 +502,7 @@ public class ZoneSerializerTests
     [Fact]
     public void Corrupt_input_returns_empty_without_throwing()
     {
-        Assert.Empty(ZoneSerializer.Deserialize(new byte[] { 9, 9, 9 })); // 未知Version
+        Assert.Empty(ZoneSerializer.Deserialize(new byte[] { 9, 9, 9 })); // unknown version
     }
 }
 ```
@@ -511,7 +512,7 @@ public class ZoneSerializerTests
 Run: `dotnet test tests/NuclearMeltdown.Core.Tests`
 Expected: FAIL, `ZoneSerializer` is not defined yet
 
-- [ ] **Step 3: ZoneSerializerを実装**
+- [ ] **Step 3: implement ZoneSerializer.**
 
 `src/NuclearMeltdown/Core/ZoneSerializer.cs`:
 ```csharp
@@ -520,7 +521,7 @@ using System.IO;
 
 namespace NuclearMeltdown.Core
 {
-    /// <summary>汚染ゾーン台帳を byte[] に直列化/復元（セーブデータ保存用）。</summary>
+    /// <summary>Serialises the contamination zone ledger to and from byte[] for the save game.</summary>
     public static class ZoneSerializer
     {
         public const byte Version = 1;
@@ -569,7 +570,7 @@ namespace NuclearMeltdown.Core
             }
             catch
             {
-                return new List<ContaminationZone>(); // 破損時は空
+                return new List<ContaminationZone>(); // corrupt data yields nothing
             }
             return result;
         }
@@ -586,14 +587,14 @@ Expected: PASS (all of them)
 
 ```bash
 git add src/NuclearMeltdown/Core/ZoneSerializer.cs tests/NuclearMeltdown.Core.Tests/ZoneSerializerTests.cs
-git commit -m "feat: ZoneSerializer ゾーン台帳の直列化/復元を追加"
+git commit -m "feat: add ZoneSerializer, serialising and restoring the zone ledger"
 ```
 
 ---
 
-## Task 5: Mod本体プロジェクト（csproj/AssemblyInfo/ModConfig/Mod）とビルド検証
+## Task 5: the mod project (csproj, AssemblyInfo, ModConfig, Mod) and verifying the build
 
-このタスクからゲーム統合層。ゲーム型に依存するため単体テストは行わず、**MSBuildコンパイル成功**を検証ゲートにする。
+From here on this is the game integration layer. It depends on game types, so there are no unit tests; **the build succeeding under MSBuild** is the gate instead.
 
 **Files:**
 - Create: `src/NuclearMeltdown/NuclearMeltdown.csproj`
@@ -603,12 +604,12 @@ git commit -m "feat: ZoneSerializer ゾーン台帳の直列化/復元を追加"
 - Create: `NuclearMeltdown.sln`
 
 **Interfaces:**
-- Consumes: nothing（Core型は後続タスクで参照）
+- Consumes nothing; the Core types are referenced in later tasks.
 - Produces:
-  - `static class ModConfig`: `const string HarmonyId = "com.omone.nuclearmeltdown";`, `const float DefaultRadiusMeters = 700f;`, `const int ExpiryYears = 50;`, `const string DecontaminationNameKeyword = "Water Treatment";`, `const string NuclearNameKeyword = "Nuclear";`, `const byte MaxPollution = 255;`, `const string LogPrefix = "[NuclearMeltdown] ";`, `static void Log(string msg)`。
-  - `class Mod : IUserMod`: `string Name { get; }`, `string Description { get; }`。
+  - `static class ModConfig` with `const string HarmonyId = "com.omone.nuclearmeltdown";`, `const float DefaultRadiusMeters = 700f;`, `const int ExpiryYears = 50;`, `const string DecontaminationNameKeyword = "Water Treatment";`, `const string NuclearNameKeyword = "Nuclear";`, `const byte MaxPollution = 255;`, `const string LogPrefix = "[NuclearMeltdown] ";` and `static void Log(string msg)`.
+  - `class Mod : IUserMod` with `string Name { get; }` and `string Description { get; }`.
 
-- [ ] **Step 1: csproj を作成（net35, 旧形式 + PackageReference）**
+- [ ] **Step 1: create the csproj** - net35, old-style, with a PackageReference.
 
 `src/NuclearMeltdown/NuclearMeltdown.csproj`:
 ```xml
@@ -664,9 +665,9 @@ git commit -m "feat: ZoneSerializer ゾーン台帳の直列化/復元を追加"
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
 ```
-注: PackageReference を旧形式csprojで使うため、`build.ps1` は `msbuild -restore` を用いる（Step 5参照）。`CitiesHarmony.API` のバージョンは restore 時に最新2.x系へ調整可。
+Note that using a PackageReference in an old-style csproj is why `build.ps1` calls `msbuild -restore`, as in Step 5. The `CitiesHarmony.API` version can be moved to the latest 2.x during the restore.
 
-- [ ] **Step 2: AssemblyInfo と ModConfig と Mod を作成**
+- [ ] **Step 2: create AssemblyInfo, ModConfig and Mod.**
 
 `src/NuclearMeltdown/Properties/AssemblyInfo.cs`:
 ```csharp
@@ -714,7 +715,7 @@ using ICities;
 
 namespace NuclearMeltdown.Game
 {
-    /// <summary>Modエントリポイント。IUserMod実装 + Harmonyパッチの適用/解除。</summary>
+    /// <summary>The mod's entry point: the IUserMod implementation plus applying and removing the Harmony patches.</summary>
     public class Mod : IUserMod
     {
         public string Name => "Nuclear Meltdown";
@@ -735,7 +736,7 @@ namespace NuclearMeltdown.Game
     }
 }
 ```
-注: `Patcher` は Task 6 で作成。このタスクでは `Mod.cs` に `Patcher` 参照が未解決になるため、**Step 2の時点では `OnEnabled`/`OnDisabled` の本体をコメントアウトまたは空**にし、Task 6完了時に有効化する。ビルド検証を通すため、この段階の `Mod.cs` は下記の暫定版を使う:
+Note that `Patcher` is created in Task 6, so the reference to it in `Mod.cs` would not resolve yet. **Leave the bodies of `OnEnabled` and `OnDisabled` empty or commented out at this step** and enable them once Task 6 is done. To keep the build green, use this interim `Mod.cs` for now:
 ```csharp
 using CitiesHarmony.API;
 using ICities;
@@ -757,9 +758,9 @@ namespace NuclearMeltdown.Game
 }
 ```
 
-- [ ] **Step 3: ソリューションファイルを作成**
+- [ ] **Step 3: create the solution file.**
 
-`NuclearMeltdown.sln`（最小構成。Mod本体のみをMSBuildでビルド／テストはdotnet別管理）:
+`NuclearMeltdown.sln`, kept minimal: MSBuild builds the mod alone, and the tests are run separately through dotnet.
 ```
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
@@ -776,7 +777,7 @@ Global
 EndGlobal
 ```
 
-- [ ] **Step 4: build.ps1 を作成（restore付きMSBuild + Modフォルダへ配置）**
+- [ ] **Step 4: create build.ps1** - MSBuild with a restore, then deploy into the mod folder.
 
 `build.ps1`:
 ```powershell
@@ -797,42 +798,42 @@ if (Test-Path $apiDll) { Copy-Item $apiDll $modDir -Force }
 Write-Host "Deploy complete: $modDir"
 ```
 
-- [ ] **Step 5: ビルド検証（コンパイル成功）**
+- [ ] **Step 5: verify the build compiles.**
 
 Run: `powershell -ExecutionPolicy Bypass -File build.ps1`
-Expected: `ビルド成功` → `NuclearMeltdown.dll` が生成され Modフォルダへコピーされる。エラーが出た場合は参照パス/PackageReference restore を修正してから次へ。
+Expected: the build succeeds, `NuclearMeltdown.dll` is produced and copied into the mod folder. On an error, fix the reference paths or the PackageReference restore before going on.
 
 - [ ] **Step 6: commit.**
 
 ```bash
 git add src/NuclearMeltdown/NuclearMeltdown.csproj src/NuclearMeltdown/Properties src/NuclearMeltdown/Game/ModConfig.cs src/NuclearMeltdown/Game/Mod.cs NuclearMeltdown.sln build.ps1
-git commit -m "feat: Mod本体プロジェクト骨組みとビルド/配置スクリプトを追加"
+git commit -m "feat: add the mod project skeleton and the build and deploy script"
 ```
 
 ---
 
-## Task 6: NuclearDetector と Harmonyパッチ（破壊検知トリガー）
+## Task 6: NuclearDetector and the Harmony patch (detecting the destruction)
 
 **Files:**
 - Create: `src/NuclearMeltdown/Game/NuclearDetector.cs`
 - Create: `src/NuclearMeltdown/Game/Patches/CollapseBuildingPatch.cs`
 - Create: `src/NuclearMeltdown/Game/Patcher.cs`
-- Modify: `src/NuclearMeltdown/Game/Mod.cs`（暫定版 → 正式版に差し替え）
+- Modify `src/NuclearMeltdown/Game/Mod.cs`, replacing the interim version with the real one.
 
 **Interfaces:**
-- Consumes: `ModConfig`（Task 5）, `MeltdownEffect.Trigger`（Task 8 で実装。パッチからの呼び出しは Task 8 完了まで `ModConfig.Log` によるスタブにする）
+- Consumes `ModConfig` from Task 5 and `MeltdownEffect.Trigger`, which Task 8 implements; until then the patch calls a `ModConfig.Log` stub.
 - Produces:
-  - `static class NuclearDetector`: `bool IsNuclearPlant(ushort buildingID)` — `BuildingManager.instance.m_buildings.m_buffer[id].Info.m_buildingAI is PowerPlantAI` かつ `Info.name` に `ModConfig.NuclearNameKeyword` を含む。
-  - `static class Patcher`: `void PatchAll()`, `void UnpatchAll()`（Harmony `PatchAll`/`UnpatchAll` を `ModConfig.HarmonyId` で実行）。
-  - `static class CollapseBuildingPatch`: Harmony が `CommonBuildingAI.CollapseBuilding` にPrefix/Postfixを適用。
+  - `static class NuclearDetector` with `bool IsNuclearPlant(ushort buildingID)`: true when `BuildingManager.instance.m_buildings.m_buffer[id].Info.m_buildingAI is PowerPlantAI` and `Info.name` contains `ModConfig.NuclearNameKeyword`.
+  - `static class Patcher` with `void PatchAll()` and `void UnpatchAll()`, calling Harmony's `PatchAll` and `UnpatchAll` under `ModConfig.HarmonyId`.
+  - `static class CollapseBuildingPatch`, where Harmony applies a Prefix and a Postfix to `CommonBuildingAI.CollapseBuilding`.
 
-- [ ] **Step 1: NuclearDetector を実装**
+- [ ] **Step 1: implement NuclearDetector.**
 
 `src/NuclearMeltdown/Game/NuclearDetector.cs`:
 ```csharp
 namespace NuclearMeltdown.Game
 {
-    /// <summary>建物が原子力発電所かどうかを判定する。</summary>
+    /// <summary>Decides whether a building is a nuclear power plant.</summary>
     public static class NuclearDetector
     {
         public static bool IsNuclearPlant(ushort buildingID)
@@ -847,9 +848,9 @@ namespace NuclearMeltdown.Game
     }
 }
 ```
-注: `BuildingManager`, `PowerPlantAI` はグローバル名前空間（Assembly-CSharp）。`using` 不要。
+Note that `BuildingManager` and `PowerPlantAI` live in the global namespace, inside Assembly-CSharp, so no `using` is needed.
 
-- [ ] **Step 2: Patcher を実装**
+- [ ] **Step 2: implement Patcher.**
 
 `src/NuclearMeltdown/Game/Patcher.cs`:
 ```csharp
@@ -857,7 +858,7 @@ using HarmonyLib;
 
 namespace NuclearMeltdown.Game
 {
-    /// <summary>Harmonyパッチの適用/解除。</summary>
+    /// <summary>Applies and removes the Harmony patches.</summary>
     public static class Patcher
     {
         private static bool _patched;
@@ -883,7 +884,7 @@ namespace NuclearMeltdown.Game
 }
 ```
 
-- [ ] **Step 3: CollapseBuildingPatch を実装（Prefixで崩壊前状態を退避、Postfixで初回崩壊のみ発火）**
+- [ ] **Step 3: implement CollapseBuildingPatch** - the Prefix records whether it had already collapsed, and the Postfix fires only on the first collapse.
 
 `src/NuclearMeltdown/Game/Patches/CollapseBuildingPatch.cs`:
 ```csharp
@@ -893,13 +894,15 @@ using UnityEngine;
 namespace NuclearMeltdown.Game.Patches
 {
     /// <summary>
-    /// CommonBuildingAI.CollapseBuilding にパッチし、原発の初回崩壊(全焼/災害)を検知する。
-    /// Prefixで「崩壊前だったか」を__stateに退避し、Postfixで初回遷移のみ発火。
+    /// Patches CommonBuildingAI.CollapseBuilding to notice a nuclear plant collapsing for the
+    /// first time, whether it burned down or a disaster took it.
+    /// The Prefix records in __state whether it had already collapsed, and the Postfix fires
+    /// only on the first transition.
     /// </summary>
     [HarmonyPatch(typeof(CommonBuildingAI), "CollapseBuilding")]
     public static class CollapseBuildingPatch
     {
-        // 実シグネチャ:
+        // The real signature:
         // bool CollapseBuilding(ushort buildingID, ref Building data,
         //     InstanceManager.Group group, bool testOnly, bool demolish, int burnAmount)
         public static void Prefix(ushort buildingID, ref Building data, bool testOnly, out bool __state)
@@ -911,14 +914,14 @@ namespace NuclearMeltdown.Game.Patches
         {
             try
             {
-                if (testOnly) return;          // 判定のみの呼び出しは無視
-                if (__state) return;           // 既に崩壊済み（デモリッシュ等）は無視
-                if (!__result) return;         // 実際に状態が変化していない
+                if (testOnly) return;          // a test-only call, so ignore it
+                if (__state) return;           // it had already collapsed, from a demolition or the like
+                if (!__result) return;         // nothing actually changed
                 if ((data.m_flags & Building.Flags.Collapsed) == Building.Flags.None) return;
                 if (!NuclearDetector.IsNuclearPlant(buildingID)) return;
 
                 Vector3 pos = data.m_position;
-                // Task 8 で MeltdownEffect.Trigger(pos) に置換
+                // Replaced by MeltdownEffect.Trigger(pos) in Task 8
                 ModConfig.Log("Nuclear plant collapsed at " + pos + " (effect stub)");
             }
             catch (System.Exception e)
@@ -929,11 +932,11 @@ namespace NuclearMeltdown.Game.Patches
     }
 }
 ```
-注: `CommonBuildingAI`, `Building`, `InstanceManager` はグローバル名前空間。`Harmony` の `__state`/`__result` は名前一致で注入される。
+Note that `CommonBuildingAI`, `Building` and `InstanceManager` live in the global namespace, and Harmony injects `__state` and `__result` by name.
 
-- [ ] **Step 4: Mod.cs を正式版へ差し替え**
+- [ ] **Step 4: replace Mod.cs with the real version.**
 
-`src/NuclearMeltdown/Game/Mod.cs`（Task 5 Step 2 の暫定版を置換）:
+`src/NuclearMeltdown/Game/Mod.cs`, replacing the interim version from Task 5 Step 2:
 ```csharp
 using CitiesHarmony.API;
 using ICities;
@@ -961,45 +964,45 @@ namespace NuclearMeltdown.Game
 }
 ```
 
-- [ ] **Step 5: ビルド検証**
+- [ ] **Step 5: verify the build.**
 
 Run: `powershell -ExecutionPolicy Bypass -File build.ps1`
-Expected: the build succeeds.`CommonBuildingAI`/`Building.Flags`/`HarmonyLib` の解決を確認（HarmonyLib は CitiesHarmony.API の依存で restore 済み）。
+Expected: the build succeeds, with `CommonBuildingAI`, `Building.Flags` and `HarmonyLib` all resolving. HarmonyLib comes in as a dependency of CitiesHarmony.API during the restore.
 
 - [ ] **Step 6: commit.**
 
 ```bash
 git add src/NuclearMeltdown/Game/NuclearDetector.cs src/NuclearMeltdown/Game/Patcher.cs src/NuclearMeltdown/Game/Patches/CollapseBuildingPatch.cs src/NuclearMeltdown/Game/Mod.cs
-git commit -m "feat: 原発判定とCollapseBuildingパッチ(破壊検知トリガー)を追加"
+git commit -m "feat: add the nuclear plant test and the CollapseBuilding patch that detects destruction"
 ```
 
 ---
 
-## Task 7: PollutionField（NaturalResourceManagerへの汚染読み書き）と ContaminationManager
+## Task 7: PollutionField (reading and writing NaturalResourceManager) and ContaminationManager
 
 **Files:**
 - Create: `src/NuclearMeltdown/Game/PollutionField.cs`
 - Create: `src/NuclearMeltdown/Game/ContaminationManager.cs`
 
 **Interfaces:**
-- Consumes: `PollutionGrid`, `CellDose`, `ContaminationZone`（Core）, `ModConfig`
+- Consumes `PollutionGrid`, `CellDose` and `ContaminationZone` from Core, plus `ModConfig`
 - Produces:
   - `static class PollutionField`:
-    - `void ApplyDose(CellDose dose)` — 対象セルの `m_pollution` を `Max(current, dose.Intensity)` に上げる。
-    - `void ClearCell(int index)` — `m_pollution = 0`。
-    - `void Refresh(int minX, int minZ, int maxX, int maxZ)` — `NaturalResourceManager.instance.AreaModifiedB(...)`。
-    - `byte GetPollution(int index)`。
+    - `void ApplyDose(CellDose dose)` - raises the cell's `m_pollution` to `Max(current, dose.Intensity)`.
+    - `void ClearCell(int index)` - sets `m_pollution` to 0.
+    - `void Refresh(int minX, int minZ, int maxX, int maxZ)` - calls `NaturalResourceManager.instance.AreaModifiedB(...)`.
+    - `byte GetPollution(int index)`.
   - `static class ContaminationManager`:
-    - `List<ContaminationZone> Zones { get; }`（読み取り用スナップショット）
-    - `void ReplaceAll(List<ContaminationZone> zones)`（ロード復元用。全汚染を一旦書き直す）
-    - `void AddZone(ContaminationZone zone)` — 台帳へ追加し初回汚染を適用。
-    - `void RemoveZoneAt(int index)` — 台帳から除去（汚染はクリアしない＝除染/自然減衰に委ねる。ただし期限切れ時は呼び出し側が先にClearZone）。
-    - `void ReassertZone(ContaminationZone zone)` — 半径内セルを再度 `ApplyDose`（自然減衰対策）。
-    - `void ClearZone(ContaminationZone zone)` — 半径内セルを0にしてRefresh。
-    - `void DecontaminateAround(float worldX, float worldZ, float radiusMeters, int step)` — 指定範囲のセル `m_pollution` を `step` 分減衰させRefreshWide。
-  - 内部で全ゾーンの外接矩形をRefreshするための最小/最大セル計算を持つ。
+    - `List<ContaminationZone> Zones { get; }` - a snapshot for reading.
+    - `void ReplaceAll(List<ContaminationZone> zones)` - used when restoring a save; rewrites all of the contamination.
+    - `void AddZone(ContaminationZone zone)` - adds it to the ledger and applies the initial contamination.
+    - `void RemoveZoneAt(int index)` - removes it from the ledger without clearing the contamination, leaving that to decontamination or the natural decay. On expiry the caller calls ClearZone first.
+    - `void ReassertZone(ContaminationZone zone)` - runs `ApplyDose` over the cells in the radius again, countering the natural decay.
+    - `void ClearZone(ContaminationZone zone)` - zeroes the cells in the radius and refreshes.
+    - `void DecontaminateAround(float worldX, float worldZ, float radiusMeters, int step)` - lowers `m_pollution` by `step` across the given area and refreshes it.
+  - Internally it works out the minimum and maximum cells so it can refresh a zone's bounding rectangle.
 
-- [ ] **Step 1: PollutionField を実装**
+- [ ] **Step 1: implement PollutionField.**
 
 `src/NuclearMeltdown/Game/PollutionField.cs`:
 ```csharp
@@ -1007,7 +1010,7 @@ using NuclearMeltdown.Core;
 
 namespace NuclearMeltdown.Game
 {
-    /// <summary>NaturalResourceManager の土壌汚染セルへの読み書きラッパ。</summary>
+    /// <summary>Read/write wrapper around NaturalResourceManager's ground pollution cells.</summary>
     public static class PollutionField
     {
         public static byte GetPollution(int index)
@@ -1042,7 +1045,7 @@ namespace NuclearMeltdown.Game
             arr[index].m_pollution = (byte)(v < 0 ? 0 : v);
         }
 
-        /// <summary>汚染テクスチャを更新（cellX/cellZ範囲）。</summary>
+        /// <summary>Refreshes the pollution texture over the given cellX/cellZ range.</summary>
         public static void Refresh(int minX, int minZ, int maxX, int maxZ)
         {
             NaturalResourceManager.instance.AreaModifiedB(minX, minZ, maxX, maxZ);
@@ -1050,9 +1053,9 @@ namespace NuclearMeltdown.Game
     }
 }
 ```
-注: `m_naturalResources` は構造体配列。`arr[i].m_pollution = x` はインプレース代入で有効。
+Note that `m_naturalResources` is an array of structs, so `arr[i].m_pollution = x` assigns in place and works.
 
-- [ ] **Step 2: ContaminationManager を実装**
+- [ ] **Step 2: implement ContaminationManager.**
 
 `src/NuclearMeltdown/Game/ContaminationManager.cs`:
 ```csharp
@@ -1061,7 +1064,7 @@ using NuclearMeltdown.Core;
 
 namespace NuclearMeltdown.Game
 {
-    /// <summary>汚染ゾーン台帳と、グリッドへの適用/維持/除去。</summary>
+    /// <summary>The ledger of contamination zones, and applying, holding and clearing them on the grid.</summary>
     public static class ContaminationManager
     {
         private static List<ContaminationZone> _zones = new List<ContaminationZone>();
@@ -1121,7 +1124,7 @@ namespace NuclearMeltdown.Game
     }
 }
 ```
-注: `NaturalResourceManager` はグローバル名前空間。
+Note that `NaturalResourceManager` lives in the global namespace.
 
 - [ ] **Step 3: verify the build.**
 
@@ -1132,25 +1135,25 @@ Expected: the build succeeds.
 
 ```bash
 git add src/NuclearMeltdown/Game/PollutionField.cs src/NuclearMeltdown/Game/ContaminationManager.cs
-git commit -m "feat: 汚染グリッド書込(PollutionField)とゾーン台帳(ContaminationManager)を追加"
+git commit -m "feat: add PollutionField for writing the pollution grid and ContaminationManager for the zone ledger"
 ```
 
 ---
 
-## Task 8: MeltdownEffect（爆発エフェクト + 初回発災）とパッチ結線
+## Task 8: MeltdownEffect (the explosion and the initial contamination) and wiring it into the patch
 
 **Files:**
 - Create: `src/NuclearMeltdown/Game/MeltdownEffect.cs`
-- Modify: `src/NuclearMeltdown/Game/Patches/CollapseBuildingPatch.cs`（スタブ → `MeltdownEffect.Trigger`）
+- Modify `src/NuclearMeltdown/Game/Patches/CollapseBuildingPatch.cs`, replacing the stub with `MeltdownEffect.Trigger`.
 
 **Interfaces:**
 - Consumes: `ContaminationManager`, `ModConfig`, `SimulationManager`, `EffectManager`, `PrefabCollection<DisasterInfo>`
 - Produces:
   - `static class MeltdownEffect`:
-    - `void Trigger(Vector3 position)` — (1) 爆発エフェクト再生（取得できれば）, (2) ゾーンを `ContaminationManager.AddZone` で登録（開始時刻 = `SimulationManager.instance.m_currentGameTime.Ticks`）。
-    - `EffectInfo ResolveExplosionEffect()` — ロード済み `MeteorAI.m_impactEffect` を探索、無ければ null。
+    - `void Trigger(Vector3 position)` - plays the explosion effect if one can be obtained, then registers the zone through `ContaminationManager.AddZone` with the start time taken from `SimulationManager.instance.m_currentGameTime.Ticks`.
+    - `EffectInfo ResolveExplosionEffect()` - searches the loaded `MeteorAI.m_impactEffect`, returning null if there is none.
 
-- [ ] **Step 1: MeltdownEffect を実装**
+- [ ] **Step 1: implement MeltdownEffect.**
 
 `src/NuclearMeltdown/Game/MeltdownEffect.cs`:
 ```csharp
@@ -1159,7 +1162,7 @@ using UnityEngine;
 
 namespace NuclearMeltdown.Game
 {
-    /// <summary>崩壊時の爆発エフェクトと汚染ゾーン発生。</summary>
+    /// <summary>The explosion effect and the contamination zone raised on a collapse.</summary>
     public static class MeltdownEffect
     {
         public static void Trigger(Vector3 position)
@@ -1202,31 +1205,31 @@ namespace NuclearMeltdown.Game
     }
 }
 ```
-注: `SimulationManager`, `EffectManager`, `EffectInfo`, `InstanceID`, `VehicleManager`, `Singleton<>`, `PrefabCollection<>`, `DisasterInfo`, `MeteorAI` はグローバル名前空間。`DisasterInfo` のAIフィールド名は `m_disasterAI`（Task検証: `DisasterInfo` を逆コンパイルして確認済みでない場合は `ilspycmd Assembly-CSharp.dll -t DisasterInfo` でフィールド名を確認してから確定）。
+Note that `SimulationManager`, `EffectManager`, `EffectInfo`, `InstanceID`, `VehicleManager`, `Singleton<>`, `PrefabCollection<>`, `DisasterInfo` and `MeteorAI` all live in the global namespace. `DisasterInfo`'s AI field is `m_disasterAI`; if that has not been confirmed by decompiling, check the field name with `ilspycmd Assembly-CSharp.dll -t DisasterInfo` before committing to it.
 
-- [ ] **Step 2: パッチのスタブを実呼び出しへ置換**
+- [ ] **Step 2: replace the stub in the patch with the real call.**
 
-`src/NuclearMeltdown/Game/Patches/CollapseBuildingPatch.cs` の Postfix 内、以下の行:
+In the Postfix of `src/NuclearMeltdown/Game/Patches/CollapseBuildingPatch.cs`, replace this line:
 ```csharp
                 Vector3 pos = data.m_position;
-                // Task 8 で MeltdownEffect.Trigger(pos) に置換
+                // Replaced by MeltdownEffect.Trigger(pos) in Task 8
                 ModConfig.Log("Nuclear plant collapsed at " + pos + " (effect stub)");
 ```
-を次に置換:
+with:
 ```csharp
                 Vector3 pos = data.m_position;
                 MeltdownEffect.Trigger(pos);
 ```
 
-- [ ] **Step 3: `DisasterInfo` のAIフィールド名を確認**
+- [ ] **Step 3: confirm the name of `DisasterInfo`'s AI field.**
 
 Run:
 ```bash
 ilspycmd "/c/Program Files (x86)/Steam/steamapps/common/Cities_Skylines/Cities_Data/Managed/Assembly-CSharp.dll" -t DisasterInfo -o /tmp/dinfo && grep -nE "DisasterAI|m_disasterAI|public .*AI " /tmp/dinfo/DisasterInfo.decompiled.cs
 ```
-Expected: `m_disasterAI` のフィールド名を確認。異なる場合は Step 1 の `info.m_disasterAI` を実名に修正。
+Expected: confirmation that the field is `m_disasterAI`. If it is not, correct `info.m_disasterAI` in Step 1 to the real name.
 
-- [ ] **Step 4: ビルド検証**
+- [ ] **Step 4: verify the build.**
 
 Run: `powershell -ExecutionPolicy Bypass -File build.ps1`
 Expected: the build succeeds.
@@ -1235,12 +1238,12 @@ Expected: the build succeeds.
 
 ```bash
 git add src/NuclearMeltdown/Game/MeltdownEffect.cs src/NuclearMeltdown/Game/Patches/CollapseBuildingPatch.cs
-git commit -m "feat: 爆発エフェクトと汚染ゾーン発生(MeltdownEffect)をパッチに結線"
+git commit -m "feat: wire MeltdownEffect - the explosion and the contamination zone - into the patch"
 ```
 
 ---
 
-## Task 9: MeltdownThreadingExtension（毎tick 維持/期限/除染）
+## Task 9: MeltdownThreadingExtension (upkeep, expiry and decontamination each tick)
 
 **Files:**
 - Create: `src/NuclearMeltdown/Game/Simulation/MeltdownThreadingExtension.cs`
@@ -1248,13 +1251,13 @@ git commit -m "feat: 爆発エフェクトと汚染ゾーン発生(MeltdownEffec
 **Interfaces:**
 - Consumes: `ContaminationManager`, `MeltdownClock`, `ModConfig`, `SimulationManager`, `BuildingManager`
 - Produces:
-  - `class MeltdownThreadingExtension : ThreadingExtensionBase` — `OnAfterSimulationTick()` をオーバーライド。ゲームが自動検出・実行。
-    - 一定tick間隔（例: 内部カウンタで16tickに1回）で全ゾーンを処理:
-      1. 期限（`MeltdownClock.HasExpired`）→ `ClearZone` して台帳から除去。
-      2. 除染施設が近傍稼働 → `ReducePollution` 相当で徐々に除去。全消去でゾーン除去。
-      3. それ以外 → `ReassertZone`（維持）。
+  - `class MeltdownThreadingExtension : ThreadingExtensionBase`, overriding `OnAfterSimulationTick()`. The game finds and drives it on its own.
+    - Processes every zone at a fixed interval, for instance once every 16 ticks by an internal counter:
+      1. Expired, by `MeltdownClock.HasExpired`: `ClearZone` and remove it from the ledger.
+      2. A decontamination facility operating nearby: reduce it gradually, as `ReducePollution` does, and remove the zone once it is all gone.
+      3. Otherwise: `ReassertZone` to hold it in place.
 
-- [ ] **Step 1: MeltdownThreadingExtension を実装**
+- [ ] **Step 1: implement MeltdownThreadingExtension.**
 
 `src/NuclearMeltdown/Game/Simulation/MeltdownThreadingExtension.cs`:
 ```csharp
@@ -1266,13 +1269,14 @@ using UnityEngine;
 namespace NuclearMeltdown.Game.Simulation
 {
     /// <summary>
-    /// 毎tickで汚染ゾーンを維持し、50年経過または除染施設稼働で解除する。
-    /// ゲームがModアセンブリ内のIThreadingExtension実装を自動検出して駆動する。
+    /// Maintains the contamination zones every tick and releases them after 50 years or once a
+    /// decontamination facility clears them.
+    /// The game discovers and drives any IThreadingExtension in a mod assembly on its own.
     /// </summary>
     public class MeltdownThreadingExtension : ThreadingExtensionBase
     {
         private int _tickCounter;
-        private const int ProcessInterval = 16; // 16tickに1回処理（負荷軽減）
+        private const int ProcessInterval = 16; // process every 16 ticks to keep the cost down
 
         public override void OnAfterSimulationTick()
         {
@@ -1281,12 +1285,12 @@ namespace NuclearMeltdown.Game.Simulation
                 if (++_tickCounter < ProcessInterval) return;
                 _tickCounter = 0;
 
-                List<ContaminationZone> zones = ContaminationManager.Zones; // スナップショット
+                List<ContaminationZone> zones = ContaminationManager.Zones; // snapshot
                 if (zones.Count == 0) return;
 
                 long nowTicks = SimulationManager.instance.m_currentGameTime.Ticks;
 
-                // 後ろから走査してインデックス除去に対応
+                // Walk backwards so removing by index stays valid.
                 for (int i = zones.Count - 1; i >= 0; i--)
                 {
                     ContaminationZone zone = zones[i];
@@ -1305,7 +1309,7 @@ namespace NuclearMeltdown.Game.Simulation
                         continue;
                     }
 
-                    ContaminationManager.ReassertZone(zone); // 自然減衰対策で維持
+                    ContaminationManager.ReassertZone(zone); // hold it against the natural decay
                 }
             }
             catch (System.Exception e)
@@ -1314,12 +1318,12 @@ namespace NuclearMeltdown.Game.Simulation
             }
         }
 
-        /// <summary>ゾーン中心付近に除染対象建物(既定:下水処理施設)が稼働中か。</summary>
+        /// <summary>Whether a decontamination building - a water treatment plant by default - is operating near the centre of the zone.</summary>
         private bool IsDecontaminationActive(ContaminationZone zone)
         {
             var bm = BuildingManager.instance;
             ushort[] grid = bm.m_buildingGrid;
-            // ゾーン中心のビルディンググリッドセル(±1)を走査
+            // Scan the building grid cells around the zone's centre, plus or minus one.
             int gx = Mathf.Clamp((int)(zone.CenterX / 64f + 135f), 0, 269);
             int gz = Mathf.Clamp((int)(zone.CenterZ / 64f + 135f), 0, 269);
             for (int dz = -1; dz <= 1; dz++)
@@ -1352,10 +1356,10 @@ namespace NuclearMeltdown.Game.Simulation
             bool anyRemaining = false;
             for (int i = 0; i < doses.Count; i++)
             {
-                PollutionField.ReducePollution(doses[i].Index, 8); // 徐々に除去
+                PollutionField.ReducePollution(doses[i].Index, 8); // removed gradually
                 if (PollutionField.GetPollution(doses[i].Index) > 0) anyRemaining = true;
             }
-            // テクスチャ更新
+            // Refresh the texture
             ContaminationManager.RefreshZoneTexturePublic(zone);
             if (!anyRemaining)
             {
@@ -1366,13 +1370,13 @@ namespace NuclearMeltdown.Game.Simulation
     }
 }
 ```
-注:
-- `RefreshZoneTexturePublic` は Task 7 の private `RefreshZoneTexture` を public 化する必要がある → 下記 Step 2 で `ContaminationManager` に public メソッド `RefreshZoneTexture(ContaminationZone)` を公開する形に変更（private版を public にリネーム）。
-- ビルディンググリッド定数（`/64f + 135f`, 解像度270）は Assembly-CSharp の `BuildingManager` 実測値。Step 3 で確認する。
+Notes:
+- `RefreshZoneTexturePublic` needs Task 7's private `RefreshZoneTexture` made public. Step 2 below does that, exposing `RefreshZoneTexture(ContaminationZone)` on `ContaminationManager` by making the private version public.
+- The building grid constants - `/64f + 135f` and a resolution of 270 - are measured from `BuildingManager` in Assembly-CSharp, and are confirmed in Step 3.
 
-- [ ] **Step 2: ContaminationManager の Refresh を公開**
+- [ ] **Step 2: make ContaminationManager's Refresh public.**
 
-`src/NuclearMeltdown/Game/ContaminationManager.cs` の `private static void RefreshZoneTexture(...)` を以下に変更（public化 + 呼び出し名統一）:
+Change `private static void RefreshZoneTexture(...)` in `src/NuclearMeltdown/Game/ContaminationManager.cs` to the following, making it public and settling on one name:
 ```csharp
         public static void RefreshZoneTexture(ContaminationZone zone)
         {
@@ -1384,17 +1388,17 @@ namespace NuclearMeltdown.Game.Simulation
             PollutionField.Refresh(minX, minZ, maxX, maxZ);
         }
 ```
-そして `MeltdownThreadingExtension` 内の `ContaminationManager.RefreshZoneTexturePublic(zone)` を `ContaminationManager.RefreshZoneTexture(zone)` に修正する。
+Then change `ContaminationManager.RefreshZoneTexturePublic(zone)` in `MeltdownThreadingExtension` to `ContaminationManager.RefreshZoneTexture(zone)`.
 
-- [ ] **Step 3: BuildingManagerのグリッド定数を確認**
+- [ ] **Step 3: confirm BuildingManager's grid constants.**
 
 Run:
 ```bash
 ilspycmd "/c/Program Files (x86)/Steam/steamapps/common/Cities_Skylines/Cities_Data/Managed/Assembly-CSharp.dll" -t BuildingManager -o /tmp/bm && grep -nE "m_buildingGrid|/ 64f|\* 270|m_nextGridBuilding|BUILDINGGRID_RESOLUTION" /tmp/bm/BuildingManager.decompiled.cs | head
 ```
-Expected: グリッド解像度270・セル64m・`m_nextGridBuilding` を確認。異なる場合は `IsDecontaminationActive` の定数を実測値に修正。
+Expected: confirmation of the 270 grid resolution, the 64 m cells and `m_nextGridBuilding`. If they differ, correct the constants in `IsDecontaminationActive` to the measured values.
 
-- [ ] **Step 4: ビルド検証**
+- [ ] **Step 4: verify the build.**
 
 Run: `powershell -ExecutionPolicy Bypass -File build.ps1`
 Expected: the build succeeds.
@@ -1403,12 +1407,12 @@ Expected: the build succeeds.
 
 ```bash
 git add src/NuclearMeltdown/Game/Simulation/MeltdownThreadingExtension.cs src/NuclearMeltdown/Game/ContaminationManager.cs
-git commit -m "feat: 毎tickの汚染維持/50年期限/除染処理を追加"
+git commit -m "feat: add the per-tick contamination upkeep, the 50-year expiry and the decontamination"
 ```
 
 ---
 
-## Task 10: ContaminationDataExtension（セーブ/ロード永続化）
+## Task 10: ContaminationDataExtension (persisting across save and load)
 
 **Files:**
 - Create: `src/NuclearMeltdown/Game/Serialization/ContaminationDataExtension.cs`
@@ -1416,9 +1420,9 @@ git commit -m "feat: 毎tickの汚染維持/50年期限/除染処理を追加"
 **Interfaces:**
 - Consumes: `ContaminationManager`, `ZoneSerializer`, `ModConfig`
 - Produces:
-  - `class ContaminationDataExtension : SerializableDataExtensionBase` — `OnSaveData()`/`OnLoadData()` をオーバーライド。データキー `"NuclearMeltdown.Contamination.v1"`。ゲームが自動検出。
+  - `class ContaminationDataExtension : SerializableDataExtensionBase`, overriding `OnSaveData()` and `OnLoadData()` under the data key `"NuclearMeltdown.Contamination.v1"`. The game finds it on its own.
 
-- [ ] **Step 1: ContaminationDataExtension を実装**
+- [ ] **Step 1: implement ContaminationDataExtension.**
 
 `src/NuclearMeltdown/Game/Serialization/ContaminationDataExtension.cs`:
 ```csharp
@@ -1428,7 +1432,7 @@ using NuclearMeltdown.Core;
 
 namespace NuclearMeltdown.Game.Serialization
 {
-    /// <summary>汚染ゾーン台帳をセーブデータへ永続化する。ゲームが自動検出。</summary>
+    /// <summary>Persists the contamination zone ledger into the save game. Discovered by the game.</summary>
     public class ContaminationDataExtension : SerializableDataExtensionBase
     {
         private const string DataId = "NuclearMeltdown.Contamination.v1";
@@ -1465,7 +1469,7 @@ namespace NuclearMeltdown.Game.Serialization
     }
 }
 ```
-注: `serializableDataManager` は `SerializableDataExtensionBase` の保護プロパティ（型 `ISerializableData`）。
+Note that `serializableDataManager` is a protected property of `SerializableDataExtensionBase`, of type `ISerializableData`.
 
 - [ ] **Step 2: verify the build.**
 
@@ -1476,112 +1480,120 @@ Expected: the build succeeds.
 
 ```bash
 git add src/NuclearMeltdown/Game/Serialization/ContaminationDataExtension.cs
-git commit -m "feat: 汚染ゾーンのセーブ/ロード永続化を追加"
+git commit -m "feat: persist the contamination zones across save and load"
 ```
 
 ---
 
-## Task 11: README とゲーム内動作確認ガイド
+## Task 11: the README and the in-game verification guide
 
 **Files:**
 - Create: `src/NuclearMeltdown/README.md`
 
 **Interfaces:**
 - Consumes: nothing
-- Produces: なし（ドキュメント）
+- Produces nothing but documentation
 
-- [ ] **Step 1: README を作成**
+- [ ] **Step 1: write the README.**
 
 `src/NuclearMeltdown/README.md`:
 ```markdown
 # Nuclear Meltdown (Cities: Skylines Mod)
 
-原子力発電所が全焼または崩壊すると、隕石爆発エフェクトと広範囲の疑似放射能汚染（土壌汚染）を発生させる。汚染はゲーム内50年経過、または除染施設（既定: 下水処理施設 Water Treatment Plant）の稼働で消滅する。
+When a nuclear power plant burns down or collapses, it sets off a meteor-style explosion and
+spreads wide-area radioactive contamination, modelled as ground pollution. The contamination
+lifts after 50 in-game years, or once a decontamination facility - a Water Treatment Plant by
+default - has been operating nearby.
 
-## 依存
-- Harmony (Mod Dependency) — Steam Workshop の CitiesHarmony を購読しておくこと。
+## Dependencies
+- Harmony (a mod dependency) - subscribe to CitiesHarmony on the Steam Workshop.
 
-## ビルドと配置
+## Building and deploying
 ```powershell
 powershell -ExecutionPolicy Bypass -File build.ps1
 ```
-`%LOCALAPPDATA%\Colossal Order\Cities_Skylines\Addons\Mods\NuclearMeltdown\` に配置される。
+It deploys to `%LOCALAPPDATA%\Colossal Order\Cities_Skylines\Addons\Mods\NuclearMeltdown\`.
 
-## ゲーム内動作確認手順
-1. 起動 → コンテンツマネージャ → Mods で "Nuclear Meltdown" を有効化。
-2. Harmony が有効であること（ログに `[NuclearMeltdown] Harmony patches applied`）。
-3. 原子力発電所を設置し、災害(隕石/竜巻等)または火災で全焼/崩壊させる。
-4. 崩壊地点に爆発エフェクトが出て、周囲約700mが汚染（紫/汚染色）になることを確認。
-5. 汚染ゾーン近傍に下水処理施設を稼働 → 汚染が徐々に消えることを確認。
-6. （時間確認）ゲーム内で50年経過 → 汚染が自動消滅することを確認。
-7. セーブ→ロードで汚染が維持されることを確認。
+## Verifying it in game
+1. Start the game, open the Content Manager, and enable "Nuclear Meltdown" under Mods.
+2. Check that Harmony is active - the log should show `[NuclearMeltdown] Harmony patches applied`.
+3. Place a nuclear power plant and destroy it, either with a disaster such as a meteor or a
+   tornado, or by fire.
+4. Confirm that an explosion appears where it collapsed and that roughly 700 m around it turns
+   the pollution colour.
+5. Operate a water treatment plant near the contaminated zone and confirm the contamination
+   fades away.
+6. Let 50 in-game years pass and confirm the contamination lifts on its own.
+7. Save and reload, and confirm the contamination is still there.
 
-## 設定
-定数は `Game/ModConfig.cs`（汚染半径・除染猶予年数・除染施設キーワード等）。
+## Settings
+The constants live in `Game/ModConfig.cs`: the contamination radius, the number of years before
+it lifts, the decontamination facility keyword and so on.
 
-## ログ
-`%LOCALAPPDATA%\Colossal Order\Cities_Skylines\` の output_log で `[NuclearMeltdown]` を検索。
+## Logs
+Search for `[NuclearMeltdown]` in the output log under
+`%LOCALAPPDATA%\Colossal Order\Cities_Skylines\`.
 ```
 
 - [ ] **Step 2: commit.**
 
 ```bash
 git add src/NuclearMeltdown/README.md
-git commit -m "docs: READMEと動作確認ガイドを追加"
+git commit -m "docs: add the README and the verification guide"
 ```
 
 ---
 
-## Task 12: 最終ビルド・全テスト・ゲーム内検証依頼
+## Task 12: the final build, the full test run, and asking for in-game verification
 
-**Files:** なし（検証のみ）
+**Files:** none; this is verification only
 
-- [ ] **Step 1: Coreの全テスト実行**
+- [ ] **Step 1: run every Core test.**
 
 Run: `dotnet test tests/NuclearMeltdown.Core.Tests`
-Expected: 全テストPASS。
+Expected: every test passes.
 
-- [ ] **Step 2: Mod本体の最終ビルド・配置**
+- [ ] **Step 2: the final build and deployment of the mod.**
 
 Run: `powershell -ExecutionPolicy Bypass -File build.ps1`
-Expected: ビルド成功、Modフォルダへ `NuclearMeltdown.dll` と `CitiesHarmony.API.dll` が配置。
+Expected: the build succeeds and both `NuclearMeltdown.dll` and `CitiesHarmony.API.dll` are deployed into the mod folder.
 
-- [ ] **Step 3: ゲーム内検証をユーザーへ依頼**
+- [ ] **Step 3: ask the user to verify it in game.**
 
-README の「ゲーム内動作確認手順」1–7 をユーザーに実施依頼（Claudeはゲーム起動テスト不可）。不具合が出た場合は output_log の `[NuclearMeltdown]` 行を共有してもらう。
+Ask the user to work through steps 1 to 7 of the README's in-game verification, since the game cannot be launched from here. If anything goes wrong, ask for the `[NuclearMeltdown]` lines from the output log.
 
-- [ ] **Step 4: 最終コミット**
+- [ ] **Step 4: the final commit.**
 
 ```bash
 git add -A
-git commit -m "chore: 最終ビルド・テスト確認"
+git commit -m "chore: final build and test verification"
 ```
 
 ---
 
 ## Self-Review
 
-**1. Spec coverage（設計書との対応）:**
-- 原発判定（PowerPlantAI + Prefab名）→ Task 6 `NuclearDetector` ✅
-- トリガー（全焼/崩壊検知, CollapseBuilding Postfix）→ Task 6 `CollapseBuildingPatch` ✅
-- 爆発エフェクト（隕石流用）→ Task 8 `MeltdownEffect` ✅
-- 土壌汚染（NaturalResourceManager, 中心〜700m減衰）→ Task 2 `PollutionGrid` + Task 7 `PollutionField/ContaminationManager` ✅
-- 汚染維持（自然減衰対策の再アサート）→ Task 9 `MeltdownThreadingExtension` ✅
-- 50年で消滅 → Task 3 `MeltdownClock` + Task 9 ✅
-- 除染施設で消滅（既存建物流用=下水処理施設）→ Task 9 `IsDecontaminationActive/DecontaminateZone` ✅
-- セーブ/ロード永続化 → Task 4 `ZoneSerializer` + Task 10 `ContaminationDataExtension` ✅
-- IUserMod（Name/Description表示）→ Task 5 `Mod` ✅
-- CitiesHarmony（Harmony 2.0）→ Task 5/6 ✅
-- エラーハンドリング（try/catch, 破損時空台帳）→ 各パッチ/tick/直列化 ✅
-- ビルド→Mod配置 → Task 5 `build.ps1`, Task 12 ✅
+**1. Spec coverage, against the design document:**
+- Identifying a nuclear plant, by PowerPlantAI plus the prefab name: Task 6, `NuclearDetector` ✅
+- The trigger, detecting a burn-down or collapse through the CollapseBuilding Postfix: Task 6, `CollapseBuildingPatch` ✅
+- The explosion effect, borrowed from the meteor: Task 8, `MeltdownEffect` ✅
+- The ground pollution in NaturalResourceManager, falling off from the centre to 700 m: Task 2 `PollutionGrid` plus Task 7 `PollutionField` and `ContaminationManager` ✅
+- Holding the contamination against the natural decay by reasserting it: Task 9, `MeltdownThreadingExtension` ✅
+- Lifting after 50 years: Task 3 `MeltdownClock` plus Task 9 ✅
+- Clearing through a decontamination facility, reusing the existing water treatment plant: Task 9, `IsDecontaminationActive` and `DecontaminateZone` ✅
+- Persisting across save and load: Task 4 `ZoneSerializer` plus Task 10 `ContaminationDataExtension` ✅
+- IUserMod, showing the Name and Description: Task 5, `Mod` ✅
+- CitiesHarmony (Harmony 2.0): Tasks 5 and 6 ✅
+- Error handling - try/catch, and an empty ledger on corrupt data: every patch, tick and serialisation path ✅
+- Building and deploying: Task 5's `build.ps1` and Task 12 ✅
 
-**2. Placeholder scan:** "TBD"/"後で"/"適切に"等の曖昧語なし。各コードステップは実コードを提示。Task 8 Step 3・Task 9 Step 3 の逆コンパイル確認は「未確定の穴埋め」ではなく、実名の最終照合手順（デフォルト値を提示済み）。
+**2. Placeholder scan:** no vague wording such as "TBD", "later" or "as appropriate". Every code step gives the real code. The decompilation checks in Task 8 Step 3 and Task 9 Step 3 are not gaps to be filled but a final confirmation of real names, with the defaults already stated.
 
 **3. Type consistency:**
-- `CellDose(int, byte)` / `ContaminationZone(float,float,float,long)` — Task 1定義とTask 2/4/7/9利用で一致。
-- `PollutionGrid.CellsInRadius(float,float,float,byte)` — Task 2定義, Task 7/9利用で一致。
-- `MeltdownClock.HasExpired(long,long,int)` — Task 3定義, Task 9利用で一致。
-- `ZoneSerializer.Serialize/Deserialize(List<ContaminationZone>/byte[])` — Task 4定義, Task 10利用で一致。
-- `ContaminationManager.RefreshZoneTexture(ContaminationZone)` — Task 9 Step 2でpublic化し呼び出し名を統一（`RefreshZoneTexturePublic` の混在を解消済み）。
-- `MeltdownEffect.Trigger(Vector3)` — Task 8定義, Task 8でパッチから呼出、一致。
+- `CellDose(int, byte)` and `ContaminationZone(float,float,float,long)` - defined in Task 1 and used consistently in Tasks 2, 4, 7 and 9.
+- `PollutionGrid.CellsInRadius(float,float,float,byte)` - defined in Task 2 and used consistently in Tasks 7 and 9.
+- `MeltdownClock.HasExpired(long,long,int)` - defined in Task 3 and used consistently in Task 9.
+- `ZoneSerializer.Serialize` and `Deserialize` - defined in Task 4 and used consistently in Task 10.
+- `ContaminationManager.RefreshZoneTexture(ContaminationZone)` - made public in Task 9 Step 2, settling on one name and removing the mixed use of `RefreshZoneTexturePublic`.
+- `MeltdownEffect.Trigger(Vector3)` - defined in Task 8 and called from the patch in Task 8; consistent.
 ```

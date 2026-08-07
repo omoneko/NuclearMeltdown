@@ -1,4 +1,4 @@
-=== Steam Workshop 説明文（BBCode・そのまま貼り付け可） ===
+=== Steam Workshop description (BBCode, ready to paste) ===
 
 [h1]Nuclear Meltdown[/h1]
 When a nuclear power plant is destroyed by fire or a disaster, it doesn't just quietly collapse — it can trigger a catastrophic [b]meltdown[/b]: a huge explosion that craters the ground and flattens the surrounding district, followed by long-lasting radioactive ground contamination.
@@ -37,14 +37,14 @@ The blast forms a crater and destroys nearby buildings, roads and trees (scaled 
 Feedback and bug reports are welcome!
 
 
-=== 補足（日本語・任意で説明文の末尾に追記可） ===
+=== Japanese summary (optional; may be appended to the end of the description) ===
 
 [h2]日本語[/h2]
 原子力発電所が火災や災害で破壊されると、確率でメルトダウン（大爆発＋クレーター＋周囲の建物破壊＋放射能汚染）が発生します。汚染はゲーム内50年経過、または「[b]Decontamination facility[/b]」（名前に "Decontamination" を含む建物）を汚染地域の近くに建てると約5%/ゲーム内月で軽減します（※下水処理場では除染されません）。手動での解体では何も起きません。Harmony (Mod Dependency) が必須。Natural Disasters DLC があると爆発の視覚/音効果が付きます（無くても動作）。
 
 
-=== Workshop ページ設定メモ（※説明欄には貼らない・作業用） ===
-- Required Items に「Harmony (Mod Dependency)」を必ず追加
-- ギャラリー画像に Pictures\1〜5.png を順番にアップロード
-- タグ: 適切なもの（例: Mod）
-- 初回は Visibility=Private で確認 → 問題なければ Public
+=== Notes on the Workshop page settings (working notes; do not paste into the description) ===
+- Add "Harmony (Mod Dependency)" to the Required Items
+- Upload Pictures\1.png through 5.png to the gallery, in order
+- Tags: whatever fits; Mod, for instance
+- Publish as Private first to check it, then make it Public once it looks right
