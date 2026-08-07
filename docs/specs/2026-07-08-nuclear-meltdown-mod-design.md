@@ -1,139 +1,172 @@
-# NuclearMeltdown Mod 設計書
+# NuclearMeltdown mod - design
 
-- 日付: 2026-07-08
-- 対象: Cities: Skylines（初代 / Unity 5 世代 / .NET Framework 3.5）
-- ステータス: 承認済み（実装前の実API検証を残す）
+- Date: 2026-07-08
+- Target: Cities: Skylines (2015 / Unity 5 era / .NET Framework 3.5)
+- Status: approved, pending verification of the real APIs before implementation
 
-## 1. 概要
+## 1. Overview
 
-原子力発電所（`PowerPlantAI` を持つ原発）が「火災で全焼」または「災害などで崩壊(Collapse)」したとき、その座標に **隕石落下相当の爆発エフェクト** を発生させ、周囲に **広範囲の土壌汚染（疑似・放射能汚染）** を適用するシステム Mod。
+A system mod that, when a nuclear power plant - a plant with a `PowerPlantAI` - either **burns
+down in a fire** or **collapses** through a disaster, produces **an explosion effect equivalent
+to a meteor strike** at its position and applies **wide-area ground pollution** standing in for
+radioactive contamination.
 
-汚染は以下のいずれかで消滅する:
+The contamination lifts in either of two ways:
 
-1. **時間**: 発生からゲーム内 **50 年** 経過
-2. **除染**: 汚染ゾーン内/近傍で **除染施設に見立てた既存建物（デフォルト: 下水処理施設 Water Treatment Plant）** が稼働し、範囲の汚染を徐々に除去
+1. **Time**: **50 in-game years** after it appeared.
+2. **Decontamination**: an existing building standing in for a decontamination facility - by
+   default the Water Treatment Plant - operates inside or near the zone and gradually removes
+   the contamination in range.
 
-汚染は Cities: Skylines の自然減衰に抗って **Mod 側で維持** され、上記条件を満たすまで消えない。
+The mod **holds the contamination in place** against Cities: Skylines' own natural decay, so it
+does not fade until one of those conditions is met.
 
-## 2. 技術要件
+## 2. Technical requirements
 
-- 言語/FW: C# / .NET Framework 3.5
-- 参照: `ICities.dll`, `Assembly-CSharp.dll`, `UnityEngine.dll`, `ColossalManaged.dll`（`C:\Program Files (x86)\Steam\steamapps\common\Cities_Skylines\Cities_Data\Managed\`）
-- Harmony: NuGet `CitiesHarmony.API`（`HarmonyHelper.DoOnHarmonyReady` 経由で適用）
-- ビルド: MSBuild（VS2022）。旧形式 csproj + `<TargetFrameworkVersion>v3.5</TargetFrameworkVersion>`。dotnet SDK は net35 非対応のため不使用。
-- 配置先: `C:\Users\omone\AppData\Local\Colossal Order\Cities_Skylines\Addons\Mods\NuclearMeltdown\`
-- インターフェース: `ICities.IUserMod`（Name/Description をModマネージャに表示）
+- Language and framework: C# on .NET Framework 3.5
+- References: `ICities.dll`, `Assembly-CSharp.dll`, `UnityEngine.dll` and `ColossalManaged.dll`,
+  from the game's `Cities_Data\Managed\` directory
+- Harmony: the `CitiesHarmony.API` NuGet package, applied through
+  `HarmonyHelper.DoOnHarmonyReady`
+- Build: MSBuild (VS2022), an old-style csproj with
+  `<TargetFrameworkVersion>v3.5</TargetFrameworkVersion>`. The dotnet SDK is not used, since it
+  does not support net35.
+- Deployed to `%LOCALAPPDATA%\Colossal Order\Cities_Skylines\Addons\Mods\NuclearMeltdown\`
+- Interface: `ICities.IUserMod`, whose Name and Description appear in the mod manager
 
-## 3. アーキテクチャ
+## 3. Architecture
 
 ```
 NuclearMeltdown/
-├─ NuclearMeltdown.csproj            # net35, MSBuild旧形式, NuGet:CitiesHarmony.API
+├─ NuclearMeltdown.csproj            # net35, old-style MSBuild, NuGet: CitiesHarmony.API
 ├─ Properties/AssemblyInfo.cs
 ├─ Source/
-│  ├─ Mod.cs                         # IUserMod + OnEnabled/OnDisabled で Harmony patch/unpatch
-│  ├─ NuclearDetector.cs             # 原発判定（PowerPlantAI + Prefab名）
-│  ├─ MeltdownEffect.cs              # 爆発エフェクト生成 + 初回汚染書き込み
-│  ├─ ContaminationManager.cs        # 汚染ゾーン台帳（中心/半径/開始ゲーム時刻）※中核
+│  ├─ Mod.cs                         # IUserMod; patches and unpatches Harmony in OnEnabled/OnDisabled
+│  ├─ NuclearDetector.cs             # identifies a nuclear plant (PowerPlantAI plus the prefab name)
+│  ├─ MeltdownEffect.cs              # creates the explosion effect and writes the initial contamination
+│  ├─ ContaminationManager.cs        # the ledger of zones (centre, radius, start time) - the core
 │  ├─ Patches/
-│  │   └─ BuildingCollapsePatch.cs   # 破壊検知 Postfix（実APIは逆コンパイルで検証）
+│  │   └─ BuildingCollapsePatch.cs   # Postfix detecting destruction (the real API to be confirmed by decompiling)
 │  ├─ Simulation/
-│  │   └─ MeltdownThreading.cs       # IThreadingExtension: 毎tick 期限監視 / 汚染維持 / 除染判定
+│  │   └─ MeltdownThreading.cs       # IThreadingExtension: expiry, upkeep and decontamination each tick
 │  └─ Serialization/
-│      └─ ContaminationSerializer.cs # ISerializableData でゾーン台帳を保存/復元
+│      └─ ContaminationSerializer.cs # saves and restores the ledger through ISerializableData
 ├─ docs/specs/2026-07-08-nuclear-meltdown-mod-design.md
 └─ README.md
 ```
 
-## 4. コンポーネント責務
+## 4. Component responsibilities
 
 ### Mod.cs
-- `IUserMod` 実装（`Name`, `Description`）。
-- `OnEnabled`/`OnDisabled` で `HarmonyHelper.DoOnHarmonyReady` によりパッチ適用/解除。
-- （必要なら）設定 UI（除染対象建物、汚染半径などのオプション）を `OnSettingsUI` で提供。
+- Implements `IUserMod` (`Name`, `Description`).
+- Applies and removes the patches in `OnEnabled` and `OnDisabled` through
+  `HarmonyHelper.DoOnHarmonyReady`.
+- If needed, offers a settings UI in `OnSettingsUI` for options such as which building
+  decontaminates and the contamination radius.
 
 ### NuclearDetector.cs
-- `IsNuclearPlant(ushort buildingID)` 純粋判定関数。
-- 判定基準: `BuildingManager.instance.m_buildings.m_buffer[id].Info.m_buildingAI is PowerPlantAI` かつ Prefab 名に "Nuclear" を含む等（実名は逆コンパイル/実データで確認）。
+- `IsNuclearPlant(ushort buildingID)`, a pure predicate.
+- The test: `BuildingManager.instance.m_buildings.m_buffer[id].Info.m_buildingAI is PowerPlantAI`
+  and the prefab name containing "Nuclear" or similar. The real names to be confirmed by
+  decompiling and against the actual data.
 
 ### BuildingCollapsePatch.cs
-- 破壊トリガーを検知する Harmony `Postfix`。
-- フック対象候補（実装前に逆コンパイルで検証）:
-  - 崩壊: `CommonBuildingAI.CollapseBuilding`
-  - 全焼: 火災による建物消滅処理（`BuildingAI`/`CommonBuildingAI` 側の該当メソッド）
-- 検知したら `NuclearDetector.IsNuclearPlant` を確認し、原発なら `MeltdownEffect.Trigger(position)` を呼ぶだけ（薄いパッチ）。
+- A Harmony `Postfix` detecting the destruction trigger.
+- Candidate hooks, to be verified by decompiling before implementing:
+  - collapse: `CommonBuildingAI.CollapseBuilding`
+  - burning down: whichever method in `BuildingAI`/`CommonBuildingAI` removes a building lost to
+    fire
+- On detecting one it checks `NuclearDetector.IsNuclearPlant` and, for a nuclear plant, does
+  nothing but call `MeltdownEffect.Trigger(position)`. The patch stays thin.
 
 ### MeltdownEffect.cs
 - `Trigger(Vector3 position)`:
-  - (a) 隕石爆発エフェクト（Meteor strike 相当）を座標に生成。エフェクトプレハブ/`EffectInfo` の取得方法は逆コンパイルで確認。
-  - (b) 初回の土壌汚染を中心〜約 700m の減衰で書き込み（`NaturalResourceManager` の土壌汚染セル）。
-  - (c) `ContaminationManager.RegisterZone(center, radius, startTime)` でゾーン登録。
+  - (a) creates the meteor explosion effect at the position. How the effect prefab or
+    `EffectInfo` is obtained is to be confirmed by decompiling.
+  - (b) writes the initial ground pollution, falling off from the centre out to about 700 m,
+    into `NaturalResourceManager`'s pollution cells.
+  - (c) registers the zone through
+    `ContaminationManager.RegisterZone(center, radius, startTime)`.
 
-### ContaminationManager.cs（中核）
-- 汚染ゾーンのリストを保持: `{ Vector3 center, float radius, DateTime startGameTime }`。
-- `RegisterZone(...)`, `RemoveZone(...)`, `GetZones()`。
-- ゾーン→土壌汚染グリッドセルへの書き込み/クリアのユーティリティ（境界チェック込み）。
-- immutable 指向: ゾーン更新は新リスト生成で行う（グローバルルールに準拠）。
+### ContaminationManager.cs (the core)
+- Holds the list of contamination zones as
+  `{ Vector3 center, float radius, DateTime startGameTime }`.
+- `RegisterZone(...)`, `RemoveZone(...)`, `GetZones()`.
+- Utilities for writing a zone into the pollution grid cells and clearing it again, with bounds
+  checking.
+- Immutable by preference: updating the zones produces a new list.
 
 ### MeltdownThreading.cs
-- `IThreadingExtension.OnAfterSimulationTick`（頻度は間引き可）で:
-  1. 各ゾーンの汚染セルを **再アサート**（自然減衰に抗い濃度維持）。
-  2. 開始から **ゲーム内50年** 経過したゾーンを解除・汚染クリア（`SimulationManager.instance.m_currentGameTime` の年差で判定）。
-  3. 除染判定: ゾーン内/近傍に稼働中の除染対象建物（下水処理施設）があれば、その範囲の汚染を徐々に減衰させ、全消去でゾーン解除。
+- In `IThreadingExtension.OnAfterSimulationTick`, at a reduced frequency if needed:
+  1. **Reasserts** each zone's pollution cells, holding the level against the natural decay.
+  2. Releases and clears any zone **50 in-game years** past its start, measured as the difference
+     in years against `SimulationManager.instance.m_currentGameTime`.
+  3. Decontamination: where an operating decontamination building - the water treatment plant -
+     stands inside or near a zone, gradually reduces the contamination in range, releasing the
+     zone once it is all gone.
 
 ### ContaminationSerializer.cs
-- `ISerializableData`（`SerializableDataExtensionBase`）でゾーン台帳をセーブデータに保存/復元。
-- 一意キー（例: `"NuclearMeltdown.Contamination.v1"`）でバイナリ保存。
-- 逆シリアライズ失敗時は空台帳で継続（セーブ破損を招かない）。
+- Saves and restores the ledger into the save game through `ISerializableData`, via
+  `SerializableDataExtensionBase`.
+- Stored as binary under a unique key such as `"NuclearMeltdown.Contamination.v1"`.
+- On a failed deserialisation it continues with an empty ledger, so it cannot corrupt the save.
 
-## 5. データフロー
+## 5. Data flow
 
 ```
-ゲームが原発を破壊(全焼/崩壊)
+the game destroys a nuclear plant (fire or collapse)
   └→ BuildingCollapsePatch.Postfix
-        └→ NuclearDetector.IsNuclearPlant? ── no → 何もしない
+        └→ NuclearDetector.IsNuclearPlant? ── no → do nothing
               └ yes → MeltdownEffect.Trigger(pos)
-                        ├→ 爆発エフェクト生成
-                        ├→ 初回 土壌汚染書き込み（中心〜700m 減衰）
+                        ├→ create the explosion effect
+                        ├→ write the initial pollution, falling off out to 700 m
                         └→ ContaminationManager.RegisterZone
 
-毎シミュレーションtick: MeltdownThreading
-  ├→ 汚染セル再アサート（維持）
-  ├→ 50年経過ゾーン → クリア&解除
-  └→ 除染施設が範囲内 → 徐々に除去 → 全消去で解除
+every simulation tick: MeltdownThreading
+  ├→ reassert the pollution cells (upkeep)
+  ├→ a zone past 50 years → clear and release it
+  └→ a decontamination facility in range → reduce it gradually → release once clear
 
-セーブ/ロード: ContaminationSerializer が台帳を永続化
+save and load: ContaminationSerializer persists the ledger
 ```
 
-## 6. エラーハンドリング / 安全性
+## 6. Error handling and safety
 
-- パッチ・tick・シリアライズ処理はすべて try/catch で保護。例外でゲーム本体を巻き込まない（Mod が失敗してもゲームは続行）。
-- 同一建物の多重破壊イベントに対する二重発火ガード。
-- 座標→グリッドセル変換時の境界チェック。
-- 逆シリアライズ失敗時は空台帳フォールバック。
-- console 出力は残さず、必要なログは CS の `DebugOutputPanel`/`Debug.Log` に限定。
+- The patch, the tick and the serialisation are all wrapped in try/catch, so an exception in the
+  mod never takes the game with it.
+- A guard against firing twice for repeated destruction events on the same building.
+- Bounds checking when converting a position to a grid cell.
+- An empty ledger as the fallback when deserialisation fails.
+- No console output is left behind; logging goes through CS's `DebugOutputPanel` or `Debug.Log`
+  only.
 
-## 7. 検証方針
+## 7. Verification
 
-- MSBuild で net35 コンパイル成功（参照解決含む）を確認。
-- **逆コンパイル（ilspycmd 等）で以下の実シグネチャを照合してから実装**:
-  - 破壊フック（`CollapseBuilding` ほか全焼処理）
-  - 土壌汚染セル書込（`NaturalResourceManager`）
-  - ゲーム内時刻（`SimulationManager.m_currentGameTime`）
-  - エフェクト生成（Meteor `EffectInfo` の取得/再生）
-  - `ISerializableData` / `IThreadingExtension` の実インターフェース
-- 実ゲーム内動作（発生→50年待ち／除染）確認は **ユーザーに依頼**（Claude からゲーム起動テスト不可）。
+- Confirm it compiles for net35 under MSBuild, references and all.
+- **Check the following real signatures by decompiling (with ilspycmd or similar) before
+  implementing**:
+  - the destruction hooks (`CollapseBuilding` and whatever handles burning down)
+  - writing the ground pollution cells (`NaturalResourceManager`)
+  - the in-game clock (`SimulationManager.m_currentGameTime`)
+  - obtaining and playing the meteor `EffectInfo`
+  - the real `ISerializableData` and `IThreadingExtension` interfaces
+- Verifying it in the running game - triggering it, waiting 50 years, decontaminating - is
+  **left to the user**, since the game cannot be launched from here.
 
-## 8. 未確定事項（実装計画で解消）
+## 8. Open questions (to be resolved in the implementation plan)
 
-- 破壊検知メソッドの正確なシグネチャと引数（崩壊 vs 全焼の分岐）。
-- 隕石爆発エフェクトの取得手段（`EffectCollection`/`DisasterManager` 経由か、`EffectInfo` 参照か）。
-- 土壌汚染セルの解像度・座標変換・書込 API の正確な形。
-- 除染施設（下水処理施設）の判定方法（AI 種別 or Prefab 名）と除染速度パラメータ。
-- tick 間引き頻度と汚染維持のコスト（大量ゾーン時のパフォーマンス）。
+- The exact signatures and arguments of the destruction hooks, and how collapse and burning down
+  differ.
+- How to obtain the meteor explosion effect: through `EffectCollection` or `DisasterManager`, or
+  by referencing an `EffectInfo` directly.
+- The exact resolution, coordinate conversion and write API of the pollution cells.
+- How to identify the decontamination facility (the water treatment plant) - by AI type or by
+  prefab name - and the parameters governing how fast it works.
+- How far to space the tick work out, and what the upkeep costs with a large number of zones.
 
-## 9. スコープ外（YAGNI）
+## 9. Out of scope (YAGNI)
 
-- 新規建物アセット（除染施設）の作成（既存建物流用のため不要）。
-- 放射能の独自リソースシステム（既存汚染を流用）。
-- マルチ言語 UI（初期は日本語/英語の最小表記）。
+- Creating a new building asset for the decontamination facility, since an existing building is
+  reused.
+- A bespoke radiation resource system, since the existing pollution is reused.
+- A multilingual UI; the initial wording is kept minimal.
