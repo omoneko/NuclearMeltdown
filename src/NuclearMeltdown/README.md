@@ -36,5 +36,5 @@ the plant's power output, or a fixed value) and whether the explosion and the fa
 all.
 
 ## Logs
-Search the output log in `%LOCALAPPDATA%\Colossal Order\Cities_Skylines\` for
+Search `Cities_Data\output_log.txt`, inside the game's installation folder, for
 `[NuclearMeltdown]`.
