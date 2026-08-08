@@ -4,7 +4,10 @@
 When a nuclear power plant is destroyed by fire or a disaster, it doesn't just quietly collapse — it can trigger a catastrophic [b]meltdown[/b]: a huge explosion that craters the ground and flattens the surrounding district, followed by long-lasting radioactive ground contamination.
 
 [h2]What happens[/h2]
-Rolled randomly each time a plant is destroyed:
+The blast forms a crater and destroys nearby buildings, roads and trees. Contamination reuses the game's ground-pollution system and is kept active by the mod so it does not fade away on its own.
+How big the disaster gets is up to you — pick one of three modes in the options:
+
+[b]1. Random (default)[/b] — rolled each time a plant is destroyed:
 [list]
 [*][b]5%[/b] — Scale 10.0 meltdown: enormous blast + crater + fallout over a huge area
 [*][b]15%[/b] — Scale 5.5 meltdown
@@ -12,12 +15,29 @@ Rolled randomly each time a plant is destroyed:
 [*][b]30%[/b] — no blast, contamination only
 [*][b]5%[/b] — collapse only (no blast, no contamination)
 [/list]
-The blast forms a crater and destroys nearby buildings, roads and trees (scaled by severity). Contamination reuses the game's ground-pollution system and is kept active by the mod so it does not fade away on its own.
+
+[b]2. Based on plant output[/b] — the disaster scales directly with the reactor's power output, so bigger plants mean bigger catastrophes:
+[list]
+[*]A vanilla nuclear plant (640 MW) = scale [b]1.0[/b]
+[*]A 1280 MW reactor = scale [b]2.0[/b]
+[*]A 3200 MW reactor = scale [b]5.0[/b]
+[/list]
+Twice the output means twice the blast radius, with [b]no upper limit[/b] — a monstrous custom reactor really can wipe out the map.
+
+[b]3. Fixed scale[/b] — always use the multiplier you set with a slider.
+
+[h2]Options[/h2]
+[list]
+[*][b]Scale mode[/b]: Random / Based on plant output / Fixed scale (+ a slider for the fixed multiplier)
+[*][b]Explosion[/b] on/off — crater and blast damage
+[*][b]Radioactive fallout[/b] on/off — ground contamination
+[/list]
+The two toggles are independent, so you can have [b]fallout only[/b] (a silent, invisible disaster), [b]explosion only[/b] (destruction with no lingering contamination), or turn both off and let the plant simply collapse.
 
 [h2]Cleaning it up[/h2]
 [list]
 [*]Contamination clears on its own after [b]50 in-game years[/b], OR
-[*]Build a [b]Decontamination facility[/b] (a building asset whose name contains "Decontamination") near the contaminated area — it gradually cleans fallout at about [b]5% per in-game month[/b].
+[*]Build a [b]Decontamination facility[/b] (a building asset whose name contains “Decontamination”) near the contaminated area — it gradually cleans fallout at about [b]5% per in-game month[/b].
 [/list]
 [b]Note:[/b] a Water Treatment Plant does NOT decontaminate — you need a dedicated Decontamination facility.
 
@@ -34,11 +54,11 @@ The blast forms a crater and destroys nearby buildings, roads and trees (scaled 
 [*][b]Optional[/b]: Natural Disasters DLC adds the meteor explosion visual/audio. The mod works fully without it (crater, destruction and contamination still happen).
 [/list]
 
-[h2]Source code[/h2]
+Feedback and bug reports are welcome!
+
+[h1]Source code[/h1]
 This mod is open source under the MIT licence. Bug reports and pull requests are welcome:
 [url=https://github.com/omoneko/NuclearMeltdown]github.com/omoneko/NuclearMeltdown[/url]
-
-Feedback and bug reports are welcome!
 
 
 === Japanese summary (optional; may be appended to the end of the description) ===
