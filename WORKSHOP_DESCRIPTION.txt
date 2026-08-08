@@ -34,6 +34,10 @@ The blast forms a crater and destroys nearby buildings, roads and trees (scaled 
 [*][b]Optional[/b]: Natural Disasters DLC adds the meteor explosion visual/audio. The mod works fully without it (crater, destruction and contamination still happen).
 [/list]
 
+[h2]Source code[/h2]
+This mod is open source under the MIT licence. Bug reports and pull requests are welcome:
+[url=https://github.com/omoneko/NuclearMeltdown]github.com/omoneko/NuclearMeltdown[/url]
+
 Feedback and bug reports are welcome!
 
 
