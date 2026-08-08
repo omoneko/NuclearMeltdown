@@ -60,6 +60,10 @@ Feedback and bug reports are welcome!
 This mod is open source under the MIT licence. Bug reports and pull requests are welcome:
 [url=https://github.com/omoneko/NuclearMeltdown]github.com/omoneko/NuclearMeltdown[/url]
 
+[h1]Support[/h1]
+If you enjoy the mod, you can support development here:
+https://ko-fi.com/omoneko
+
 
 === Japanese summary (optional; may be appended to the end of the description) ===
 
