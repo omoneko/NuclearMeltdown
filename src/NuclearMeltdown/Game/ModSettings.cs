@@ -15,13 +15,9 @@ namespace NuclearMeltdown.Game
     {
         public const string FileName = "NuclearMeltdownSettings";
 
-        /// <summary>Display names of the scale modes (index = the MeltdownScaleMode value).</summary>
-        public static readonly string[] ScaleModeNames =
-        {
-            "Random (probability table)",
-            "Based on plant output",
-            "Fixed scale"
-        };
+        // The scale-mode display names live in MeltdownStrings.ScaleModeLabels(). They were a
+        // static readonly array here, which is built once at class load and would have kept
+        // whatever language the game started in.
 
         // The fixed-scale slider covers 0.5 to 10.0, stored as an integer times ten (5 to 100).
         public const int FixedScaleMin = 5;

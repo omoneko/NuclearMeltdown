@@ -1,0 +1,18 @@
+# Nuclear Meltdown UI strings (English template).
+# To translate: copy this file to <language code>.txt using the code the game
+# reports (de/fr/es/zh/ja/...), translate the values, and keep the \n line-break
+# escapes. Missing keys fall back to English, so a partial file is fine.
+# Contributions welcome: https://github.com/omoneko/NuclearMeltdown
+
+Mod_Description = When a nuclear power plant burns down or collapses, it unleashes an explosion and widespread radioactive contamination (ground pollution). The contamination clears after 50 in-game years or when a decontamination facility is running nearby.
+Options_ScaleGroup = Disaster scale
+Options_ScaleMode = Scale mode
+ScaleMode_Random = Random (probability table)
+ScaleMode_Output = Based on plant output
+ScaleMode_Fixed = Fixed scale
+Options_ScaleHelp = Random: the original probability table (5% huge / 15% large / 45% normal / 30% fallout only / 5% collapse only).  Based on plant output: scale is directly proportional to the plant's power output, with a vanilla nuclear plant (640 MW) = 1.0, a 1280 MW reactor = 2.0 and a 3200 MW reactor = 5.0 - twice the output means twice the blast radius. There is no upper limit: a monstrous reactor really can wipe out the map.  Fixed scale: always use the multiplier below.
+Options_FixedScale = Fixed scale x10 (10 = 1.0)
+Options_EffectsGroup = What happens on meltdown
+Options_Explosion = Explosion (crater and blast damage)
+Options_Contamination = Radioactive fallout (ground contamination)
+Options_EffectsHelp = Turn either off independently - e.g. fallout only (no explosion), or explosion only (no contamination). With both off, the plant simply collapses.

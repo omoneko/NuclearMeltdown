@@ -1,0 +1,18 @@
+# Nuclear Meltdown UI strings (Japanese).
+# Generated from en.txt; keys must match the field names in MeltdownStrings.cs.
+# Missing keys fall back to English, so this file may be partial.
+
+Mod_Description = 原子力発電所が火災や倒壊を起こすと、爆発と広範囲の放射能汚染 (地面の汚染) が発生します。汚染はゲーム内で50年経過するか、近くで除染施設が稼働すると消えていきます。
+
+Options_ScaleGroup = 災害の規模
+Options_ScaleMode = 規模の決め方
+ScaleMode_Random = ランダム (確率表)
+ScaleMode_Output = 発電量に比例
+ScaleMode_Fixed = 固定倍率
+Options_ScaleHelp = ランダム: 元の確率表に従います (5% 極大 / 15% 大 / 45% 通常 / 30% 汚染のみ / 5% 倒壊のみ)。  発電量に比例: 規模が発電所の出力にそのまま比例します。バニラの原子力発電所 (640 MW) が 1.0、1280 MW の炉が 2.0、3200 MW の炉が 5.0 で、出力が2倍なら爆発半径も2倍です。上限はないため、極端な炉ならマップ全体を消し飛ばせます。  固定倍率: 常に下の倍率を使います。
+Options_FixedScale = 固定倍率 x10 (10 = 1.0)
+
+Options_EffectsGroup = メルトダウン時に起きること
+Options_Explosion = 爆発 (クレーターと爆風被害)
+Options_Contamination = 放射性降下物 (地面の汚染)
+Options_EffectsHelp = それぞれ独立してオフにできます。例えば汚染のみ (爆発なし)、爆発のみ (汚染なし) といった設定が可能です。両方オフにすると、発電所は単に倒壊するだけになります。

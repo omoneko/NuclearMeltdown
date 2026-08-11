@@ -5,39 +5,37 @@ namespace NuclearMeltdown.Game
 {
     public class Mod : IUserMod
     {
+        // The mod's name is its Workshop title, so it stays in English; everything else is
+        // localizable. The getter loads the locale because the Content Manager can read this
+        // before the options screen has ever been opened.
         public string Name => "Nuclear Meltdown";
-        public string Description => "When a nuclear power plant burns down or collapses, it unleashes an explosion and widespread radioactive contamination (ground pollution). The contamination clears after 50 in-game years or when a decontamination facility is running nearby.";
+        public string Description
+        {
+            get { LocaleLoader.EnsureLoaded(); return MeltdownStrings.Mod_Description; }
+        }
 
         public void OnSettingsUI(UIHelperBase helper)
         {
             try
             {
+                LocaleLoader.EnsureLoaded();
                 ModSettings.Ensure();
 
-                UIHelperBase g = helper.AddGroup("Disaster scale");
-                g.AddDropdown("Scale mode", ModSettings.ScaleModeNames, ModSettings.ScaleModeSetting.value,
+                UIHelperBase g = helper.AddGroup(MeltdownStrings.Options_ScaleGroup);
+                g.AddDropdown(MeltdownStrings.Options_ScaleMode, MeltdownStrings.ScaleModeLabels(),
+                    ModSettings.ScaleModeSetting.value,
                     i => ModSettings.ScaleModeSetting.value = i);
-                g.AddButton(
-                    "Random: the original probability table (5% huge / 15% large / 45% normal / 30% fallout only / 5% collapse only).  " +
-                    "Based on plant output: scale is directly proportional to the plant's power output, with a vanilla " +
-                    "nuclear plant (640 MW) = 1.0, a 1280 MW reactor = 2.0 and a 3200 MW reactor = 5.0 - twice the " +
-                    "output means twice the blast radius. There is no upper limit: a monstrous reactor really can wipe " +
-                    "out the map.  " +
-                    "Fixed scale: always use the multiplier below.",
-                    () => { });
-                g.AddSlider("Fixed scale x10 (10 = 1.0)", ModSettings.FixedScaleMin, ModSettings.FixedScaleMax, 1,
+                g.AddButton(MeltdownStrings.Options_ScaleHelp, () => { });
+                g.AddSlider(MeltdownStrings.Options_FixedScale, ModSettings.FixedScaleMin, ModSettings.FixedScaleMax, 1,
                     ModSettings.FixedScaleSetting.value,
                     v => ModSettings.FixedScaleSetting.value = (int)v);
 
-                UIHelperBase e = helper.AddGroup("What happens on meltdown");
-                e.AddCheckbox("Explosion (crater and blast damage)", ModSettings.ExplosionEnabled,
+                UIHelperBase e = helper.AddGroup(MeltdownStrings.Options_EffectsGroup);
+                e.AddCheckbox(MeltdownStrings.Options_Explosion, ModSettings.ExplosionEnabled,
                     b => ModSettings.ExplosionEnabledSetting.value = b ? 1 : 0);
-                e.AddCheckbox("Radioactive fallout (ground contamination)", ModSettings.ContaminationEnabled,
+                e.AddCheckbox(MeltdownStrings.Options_Contamination, ModSettings.ContaminationEnabled,
                     b => ModSettings.ContaminationEnabledSetting.value = b ? 1 : 0);
-                e.AddButton(
-                    "Turn either off independently - e.g. fallout only (no explosion), or explosion only (no contamination). " +
-                    "With both off, the plant simply collapses.",
-                    () => { });
+                e.AddButton(MeltdownStrings.Options_EffectsHelp, () => { });
             }
             catch (System.Exception ex)
             {
